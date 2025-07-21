@@ -1,0 +1,1 @@
+export {Deposit} from './conteiner/deposit'

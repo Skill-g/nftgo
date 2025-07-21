@@ -1,0 +1,1 @@
+export {PlayersList} from './conteiner/players-list'

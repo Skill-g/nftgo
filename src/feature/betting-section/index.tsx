@@ -1,0 +1,1 @@
+export {BettingSection} from './conteiner/betting-section'

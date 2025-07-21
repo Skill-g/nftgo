@@ -1,0 +1,1 @@
+export {RewardSection} from './conteiner/reward-section'

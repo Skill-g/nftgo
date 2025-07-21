@@ -1,0 +1,1 @@
+export {MarathonTimer} from './conteiner/marathonTimer'
