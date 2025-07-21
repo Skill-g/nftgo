@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Multipliers } from "@/shared/ui/multipliers";
 import { NewsBanner } from "@/shared/ui/news-banner";
-import { GameArea } from "@/shared/ui/game-area";
+import { GameArea } from "@/shared/ui/gameArea/game-area";
 import { BettingSection } from "@/feature/betting-section";
 import { PlayersList } from "@/feature/players-list";
 

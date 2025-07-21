@@ -3,9 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Progress } from "@/shared/ui/progress";
+import styles from './styles.module.css'
 import Image from "next/image";
 
-// ✅ Типы пропсов
 type GameAreaProps = {
     resetBets: () => void;
     setGamePhase: (phase: string) => void;
@@ -149,7 +149,7 @@ export function GameArea({
     return (
         <Card
             style={{ height: "248px" }}
-            className="bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden"
+            className={`bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden ${(phase === "running" || phase === "crashed") ? styles.background : ""}`}
         >
             <CardContent
                 className="p-8 text-center flex flex-col items-center justify-center"
@@ -174,7 +174,7 @@ export function GameArea({
                 {(phase === "running" || phase === "crashed") && (
                     <div
                         ref={trackRef}
-                        className="relative w-full"
+                        className={`relative w-full mt-12`}
                         style={{ height: 128, minHeight: 128, marginBottom: 16 }}
                     >
                         <div
