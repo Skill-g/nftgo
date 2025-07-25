@@ -4,7 +4,7 @@ import { useTelegramAuth } from "@/shared/hooks/useTelegramAuth";
 
 export function UserProfile() {
     const { user, loading, error } = useTelegramAuth();
-
+    console.log("юзер приходит:", user);
     if (loading) {
         return (
             <Layout>
