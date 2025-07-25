@@ -20,8 +20,10 @@ export function useTelegramAuth() {
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
-        const initData = tg?.initData || 'пустой';
-        console.log("инит:", initData);
+        console.log("window.Telegram:", window.Telegram);
+        const initData = tg?.initData || '';
+        console.log("tg:", tg);
+        console.log("initData:", tg?.initData);
         if (!initData) {
             setLoading(false);
             return;
