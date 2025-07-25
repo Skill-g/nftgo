@@ -1,10 +1,10 @@
 import { Layout } from "@/feature/user-profile/conteiner/layout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/ui/avatar";
-import { useTelegramAuth } from "@/shared/hooks/useTelegramAuth";
+import { useUser } from "@/shared/context/UserContext";
 
 export function UserProfile() {
-    const { user, loading, error } = useTelegramAuth();
-    console.log("юзер приходит:", user);
+    const { user, loading, error } = useUser();
+
     if (loading) {
         return (
             <Layout>

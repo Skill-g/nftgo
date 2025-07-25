@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/shared/ui/header";
 import { BottomNav } from "@/feature/bottom-nav";
 import Script from "next/script";
+import {UserProvider} from "@/shared/context/UserContext";
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
@@ -62,11 +63,13 @@ export default function RootLayout({
       <body
           className={`${montserrat.variable} antialiased bg-[#150f27]`}
       >
+      <UserProvider>
       <Header />
       <div className={'bg-[#150f27] min-h-screen text-white px-[15px] mx-auto relative'}>
         {children}
       </div>
       <BottomNav />
+      </UserProvider>
       </body>
       </html>
   );
