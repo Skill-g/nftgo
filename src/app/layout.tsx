@@ -3,7 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/shared/ui/header";
 import { BottomNav } from "@/feature/bottom-nav";
-
+import Script from "next/script";
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
@@ -54,6 +54,10 @@ export default function RootLayout({
         {imageUrls.map((url, index) => (
             <link key={index} rel="preload" href={url} as="image" />
         ))}
+          <Script
+              src="https://telegram.org/js/telegram-web-app.js"
+              strategy="beforeInteractive"
+          />
       </head>
       <body
           className={`${montserrat.variable} antialiased bg-[#150f27]`}
