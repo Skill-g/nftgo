@@ -1,5 +1,7 @@
+import {BACKEND_URL} from "@/shared/consts";
+
 export async function authWithBackend(initData: string) {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth`, {
+    const res = await fetch(`${BACKEND_URL}/api/auth`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ initData })
