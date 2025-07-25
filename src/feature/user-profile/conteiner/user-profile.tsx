@@ -1,6 +1,5 @@
-"use client"
 import { Layout } from "@/feature/user-profile/conteiner/layout";
-import { Avatar } from "@/shared/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/ui/avatar";
 import { useTelegramAuth } from "@/shared/hooks/useTelegramAuth";
 
 export function UserProfile() {
@@ -25,11 +24,10 @@ export function UserProfile() {
     return (
         <Layout>
             <div className="w-20 h-20 rounded-xl overflow-hidden">
-                <Avatar
-                    className="w-[80px] h-[80px] object-cover bg-white rounded-xl"
-                    src={user.photoUrl}
-                    alt={user.firstName}
-                />
+                <Avatar className="w-[80px] h-[80px] object-cover bg-white rounded-xl">
+                    <AvatarImage src={user.photoUrl} alt={user.firstName} />
+                    <AvatarFallback>{user.firstName[0]}</AvatarFallback>
+                </Avatar>
             </div>
             <div>
                 <h1 className="text-2xl font-bold text-white mb-1">{user.firstName}</h1>

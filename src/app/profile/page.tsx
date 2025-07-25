@@ -1,3 +1,4 @@
+"use client"
 import {UserProfile} from "@/feature/user-profile";
 import {Banner} from "@/shared/ui/banner";
 import {LanguageSelection} from "@/feature/language-selection";
