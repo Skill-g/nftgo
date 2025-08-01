@@ -4,7 +4,6 @@ import { useUser } from "@/shared/context/UserContext";
 
 export function UserProfile() {
     const { user, loading, error } = useUser();
-
     if (loading) {
         return (
             <Layout>
@@ -16,7 +15,7 @@ export function UserProfile() {
     if (error || !user) {
         return (
             <Layout>
-                <div className="text-red-400 text-xl">Ошибка авторизации или пользователь не найден</div>
+                <div className="text-red-400 text-xl text-center w-full">Ошибка Авторизации</div>
             </Layout>
         );
     }
