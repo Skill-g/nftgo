@@ -72,7 +72,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     if (loading) {
-        return <div className="text-white text-center">Загрузка данных...</div>;
+        return <div className="text-white text-center"></div>;
     }
 
     if (error) {

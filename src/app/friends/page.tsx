@@ -15,22 +15,25 @@ export default function Page() {
 
     const handleInvite = async () => {
         if (!user) return;
-
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-            if (!backendUrl) {
-                throw new Error("NEXT_PUBLIC_BACKEND_URL is not defined");
-            }
-
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL!;
             const response = await fetch(`${backendUrl}/referral/link`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ initData: user.initData }),
             });
-
             if (!response.ok) throw new Error("Failed to generate referral link");
-            const data = await response.json();
-            window.Telegram?.WebApp.openLink(data.shareUrl);
+            const { shareUrl } = await response.json();
+
+            const tg = window.Telegram?.WebApp;
+            if (tg?.openTelegramLink) {
+                tg.openTelegramLink(shareUrl);
+            } else if (tg?.shareURL) {
+                tg.shareURL(shareUrl, "Смотри этого бота!");
+            } else {
+                console.warn("Telegram WebApp API unavailable");
+                window.open(shareUrl, "_blank");
+            }
         } catch (err) {
             console.error(err);
         }
