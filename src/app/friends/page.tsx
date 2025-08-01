@@ -27,13 +27,11 @@ export default function Page() {
 
             const tg = window.Telegram?.WebApp;
             if (tg) {
-                const message = encodeURIComponent(`Check out this awesome bot! ${shareUrl}`);
-                const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${message}`;
-
+                const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`;
                 if (tg.openLink) {
                     tg.openLink(telegramShareUrl);
                 } else {
-                    console.warn("Telegram WebApp openLink unavailable, falling back to window.open");
+                    console.warn("window.open");
                     window.open(telegramShareUrl, "_blank");
                 }
             } else {
