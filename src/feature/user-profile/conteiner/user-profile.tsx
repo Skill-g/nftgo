@@ -1,9 +1,9 @@
 import { Layout } from "@/feature/user-profile/conteiner/layout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/ui/avatar";
-import { useUser } from "@/shared/context/UserContext";
+import { useUserContext } from "@/shared/context/UserContext";
 
 export function UserProfile() {
-    const { user, loading, error } = useUser();
+    const { user, loading, error } = useUserContext();
     if (loading) {
         return (
             <Layout>

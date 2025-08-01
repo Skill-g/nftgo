@@ -4,6 +4,7 @@ import {Button} from "@/shared/ui/button";
 import {Input} from "@/shared/ui/input";
 import {X} from "lucide-react";
 import {useState} from "react";
+import Image from 'next/image'
 
 export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: boolean, setShowPromoModal: (value: boolean) => void}) {
 
@@ -43,9 +44,12 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
                         </div>
 
                         <div className="flex items-center justify-center gap-2 mt-8">
-                            <div className="text-lg font-bold text-[#c2c2c2]">NFT</div>
-                            <div className="text-lg font-bold text-[#c2c2c2]">GO</div>
-                            <div className="text-[#8845f5] text-lg">🚀</div>
+                            <Image
+                                src="/promo.png"
+                                width={66}
+                                height={48}
+                                alt="Picture of the author"
+                            />
                         </div>
                     </div>
                 </div>

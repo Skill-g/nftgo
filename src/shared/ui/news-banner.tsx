@@ -1,4 +1,3 @@
-// src/shared/ui/news-banner.tsx
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import Image from "next/image";

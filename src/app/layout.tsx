@@ -65,15 +65,17 @@ export default function RootLayout({
         <body
             className={`${montserrat.variable} antialiased bg-[#150f27]`}
         >
-        <OnlineUsersProvider>
+
             <UserProvider>
+                <OnlineUsersProvider>
                 <Header/>
                 <div className={'bg-[#150f27] min-h-screen text-white px-[15px] mx-auto relative'}>
                     {children}
                 </div>
                 <BottomNav/>
+                </OnlineUsersProvider>
             </UserProvider>
-        </OnlineUsersProvider>
+
         </body>
         </html>
     );

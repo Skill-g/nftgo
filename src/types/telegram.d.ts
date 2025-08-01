@@ -1,9 +1,12 @@
-interface TelegramWebApp {
-    initData: string;
-}
+export {};
 
-interface Window {
-    Telegram?: {
-        WebApp: TelegramWebApp;
-    };
+declare global {
+    interface Window {
+        Telegram?: {
+            WebApp: {
+                initData: string;
+                openLink: (url: string) => void;
+            };
+        };
+    }
 }

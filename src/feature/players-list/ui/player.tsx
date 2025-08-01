@@ -6,7 +6,7 @@ export function Player({name, bet}: {name: string, bet: number}) {
         <div className="flex items-center justify-between bg-[#231c46] rounded-lg p-3">
             <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
-                    <AvatarImage src="/placeholder.svg?height=40&width=40"/>
+                    <AvatarImage src="/profile/placeholder.png"/>
                     <AvatarFallback className="bg-[#533189] text-white">YL</AvatarFallback>
                 </Avatar>
                 <span className="text-white font-medium">{name}</span>
