@@ -26,16 +26,24 @@ export default function Page() {
             const { shareUrl } = await response.json();
 
             const tg = window.Telegram?.WebApp;
-            if (tg?.openTelegramLink) {
-                tg.openTelegramLink(shareUrl);
-            } else if (tg?.shareURL) {
-                tg.shareURL(shareUrl, "Смотри этого бота!");
+            if (tg) {
+                const message = encodeURIComponent(`Check out this awesome bot! ${shareUrl}`);
+                const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${message}`;
+
+                if (tg.openLink) {
+                    tg.openLink(telegramShareUrl);
+                } else {
+                    console.warn("Telegram WebApp openLink unavailable, falling back to window.open");
+                    window.open(telegramShareUrl, "_blank");
+                }
             } else {
                 console.warn("Telegram WebApp API unavailable");
-                window.open(shareUrl, "_blank");
+                await navigator.clipboard.writeText(shareUrl);
+                alert("Referral link copied to clipboard!");
             }
         } catch (err) {
-            console.error(err);
+            console.error("Error generating or sharing referral link:", err);
+            alert("Failed to generate referral link. Please try again.");
         }
     };
 
