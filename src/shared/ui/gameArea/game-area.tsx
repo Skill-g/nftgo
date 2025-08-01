@@ -27,7 +27,7 @@ export function GameArea({
 
     const [startTime, setStartTime] = useState(0);
     const [runnerPx, setRunnerPx] = useState(0);
-    const [, setEscapeStart] = useState<number | null>(null); // ✅ фикс TS2345
+    const [, setEscapeStart] = useState<number | null>(null);
 
     function updateWidth() {
         if (trackRef.current) {

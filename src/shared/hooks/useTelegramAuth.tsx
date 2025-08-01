@@ -14,16 +14,12 @@ type TelegramUser = {
 
 export function useTelegramAuth() {
     const [user, setUser] = useState<TelegramUser | null>(null);
-    console.log("вот:", user);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
-        console.log("window.Telegram:", window.Telegram);
         const initData = tg?.initData || '';
-        console.log("tg:", tg);
-        console.log("initData:", tg?.initData);
         if (!initData) {
             setLoading(false);
             return;

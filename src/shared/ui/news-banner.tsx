@@ -1,8 +1,11 @@
-import {Card, CardContent} from "@/shared/ui/card";
-import {Button} from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
 import Image from "next/image";
+import { useOnlineUsers } from "@/shared/hooks/useOnlineUsers";
 
 export function NewsBanner() {
+    const { onlineCount, loading, error } = useOnlineUsers();
+
     return (
         <div className="flex items-center gap-3">
             <Card className="flex-1 bg-gradient-to-r from-[#984eed] p-2.5 to-[#8845f5] border-0">
@@ -16,8 +19,14 @@ export function NewsBanner() {
 
             <div className="bg-[#163200] border-1 border-white/50 rounded-lg p-3 flex items-center gap-2">
                 <Image src={'/rocket/wifi.png'} alt={'wifi'} width={20} height={20} />
-                <span className="text-white font-bold">68</span>
+                {loading ? (
+                    <span className="text-white font-bold">Loading...</span>
+                ) : error ? (
+                    <span className="text-red-400 font-bold">Error</span>
+                ) : (
+                    <span className="text-white font-bold">{onlineCount || 0}</span>
+                )}
             </div>
         </div>
-    )
+    );
 }

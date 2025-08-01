@@ -33,7 +33,6 @@ export function NftList({imgNft, isProfile}: {isProfile: boolean, imgNft: string
                         <Button
                             className="flex-1 bg-gradient-to-r from-[#18CD00] to-[#067200] hover:bg-green-600 text-white font-semibold py-3 h-[54px]"
                             onClick={() => {
-                                console.log("Collecting items:", selectedItems)
                                 setSelectedItems([])
                             }}
                         >
@@ -42,7 +41,6 @@ export function NftList({imgNft, isProfile}: {isProfile: boolean, imgNft: string
                         <Button
                             className="flex-1 bg-gradient-to-r from-[#3900D7] to-[#8B5CD7] hover:bg-[#533189] text-white font-semibold py-3 h-[54px]"
                             onClick={() => {
-                                console.log("Selling items:", selectedItems)
                                 setSelectedItems([])
                             }}
                         >
