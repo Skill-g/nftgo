@@ -9,6 +9,7 @@ export function useOnlineUsers() {
         const fetchOnlineUsers = async () => {
             try {
                 const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/online-users`);
+                console.log(response)
                 if (!response.ok) throw new Error("Failed to fetch online users");
                 const data = await response.json();
                 setOnlineCount(data.count);
