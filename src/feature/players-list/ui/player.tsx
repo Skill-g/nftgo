@@ -13,7 +13,7 @@ export function Player({name, bet}: {name: string, bet: number}) {
             </div>
             <div className="flex items-center gap-2">
                 <span className="text-white font-bold">{bet}</span>
-                <div className="w-6 h-6 bg-[#8845f5] rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center">
                     <Image src={'/tonCoin.svg'} alt={'ton coin'} width={20} height={20} />
                 </div>
             </div>

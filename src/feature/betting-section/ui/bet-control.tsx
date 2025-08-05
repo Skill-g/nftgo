@@ -58,7 +58,7 @@ export function BetControl({
 
     return (
         <div className="flex bg-[#262352] rounded-[20px] p-2">
-            <div className="flex flex-col bg-[#1B1636] rounded-lg items-center p-2 my-2 ml-0.5 gap-3">
+            <div className="flex flex-col bg-[#1B1636] rounded-[20px] items-center p-2 my-2 ml-0.5 gap-3">
                 <div className="flex bg-[#1B1636] items-center rounded-lg gap-2">
                     <Button
                         size="sm"

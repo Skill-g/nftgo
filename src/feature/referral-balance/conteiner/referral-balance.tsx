@@ -14,7 +14,7 @@ export function ReferralBalance() {
                 <div>
                     <div className="text-[#929292] text-sm mb-1">Referral balance</div>
                     <div className="flex items-center">
-                        <div className="w-5 h-5 bg-[#8845f5] rounded-full flex items-center justify-center mr-2">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center mr-2">
                             <Image src={'/tonCoin.svg'} alt={"ton Coin"} width={18} height={18} />
                         </div>
                         <span className="text-white text-xl font-bold">
