@@ -7,7 +7,6 @@ import {useTonConnect} from "@/shared/hooks/useTonConnect";
 
 export function Header (){
     const { isConnected, initialRestored, walletInfo, handleConnect } = useTonConnect();
-
     if (!initialRestored) {
         return (
             <div className={'mb-3'}>
@@ -65,15 +64,16 @@ export function Header (){
                     </div>
                 </div>
 
-                <div className="border-2 border-[#533189] rounded-lg px-1 py-0 flex items-center">
+                <div className="border-2 border-[#533189] rounded-lg px-1 py-0 flex items-center min-h-[40px]">
                     {isConnected ? (
                         <div className="flex items-center gap-2">
-                            <span className="text-white text-sm px-2">
-                                {walletInfo?.account?.address && formatAddress(walletInfo.account.address)}
-                            </span>
+            <span className="text-white text-sm px-2">
+                {walletInfo?.account?.address && formatAddress(walletInfo.account.address)}
+            </span>
                             <Button
                                 onClick={handleConnect}
-                                className="bg-red-600 hover:bg-red-700 text-white px-2 rounded-lg text-sm">
+                                className="bg-red-600 hover:bg-red-700 text-white rounded-md text-xs h-[30px]"
+                            >
                                 Disconnect
                             </Button>
                         </div>
