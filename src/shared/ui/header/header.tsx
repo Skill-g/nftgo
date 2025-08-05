@@ -73,7 +73,7 @@ export function Header (){
                             </span>
                             <Button
                                 onClick={handleConnect}
-                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
+                                className="bg-red-600 hover:bg-red-700 text-white px-2 rounded-lg text-sm">
                                 Disconnect
                             </Button>
                         </div>
