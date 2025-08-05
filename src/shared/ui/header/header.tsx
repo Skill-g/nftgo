@@ -3,7 +3,7 @@
 import {Plus} from 'lucide-react'
 import {Button} from "@/shared/ui/button";
 import Image from "next/image";
-import {useTonConnect} from "@/shared/hooks/useTonConnect";
+import { useTonConnect } from "@/shared/context/TonConnectContext";
 
 export function Header (){
     const { isConnected, initialRestored, walletInfo, handleConnect } = useTonConnect();
