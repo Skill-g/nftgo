@@ -2,16 +2,5 @@
   "name": "NFT Go",
   "description": "NFT Go App",
   "url": "https://nftgo.site",
-  "wallets": [
-    {
-      "name": "Tonkeeper",
-      "url": "https://t.me/tonkeeperbot",
-      "image": "https://nftgo.site/tonkeeper.svg"
-    },
-    {
-      "name": "Tonhub",
-      "url": "https://t.me/tonhubwalletbot",
-      "image": "https://nftgo.site/tonhub.svg"
-    }
-  ]
+  "iconUrl": "https://nftgo.site/logo.png"
 }
