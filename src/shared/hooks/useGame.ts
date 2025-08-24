@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserContext } from "@/shared/context/UserContext";
-import { fetchCurrentRound } from "@/shared/lib/game-api";
+import { useGameApi } from "@/shared/lib/game-api";
 import { makeGameSocket, WSMessage } from "@/shared/lib/game-socket";
 
 export type GamePhase = "waiting" | "running" | "crashed";
@@ -15,9 +15,11 @@ export type GameState = {
 };
 
 export function useGame() {
-    const host = process.env.NEXT_PUBLIC_GAME_HOST!;
+    const wsHost = process.env.NEXT_PUBLIC_GAME_HOST!;
     const { user } = useUserContext();
     const initData = user?.initData || "";
+    const { fetchCurrentRound } = useGameApi();
+
     const [state, setState] = useState<GameState>({
         phase: "waiting",
         multiplier: 1,
@@ -41,7 +43,7 @@ export function useGame() {
     const connect = useCallback(async () => {
         if (!initData) return;
         try {
-            const current = await fetchCurrentRound(initData);
+            const current = await fetchCurrentRound();
             if (retryRef.current.closing) return;
             setState((s) => ({
                 ...s,
@@ -49,41 +51,34 @@ export function useGame() {
                 multiplier: current.currentMultiplier ?? 1,
             }));
             socketRef.current?.close();
-            const sock = makeGameSocket(host, current.roundId, initData, {
+
+            const sock = makeGameSocket(wsHost, current.roundId, initData, {
                 onOpen: () => {
+                    console.log("[WS] open", current.roundId);
                     retryRef.current.tries = 0;
                     setState((s) => ({ ...s, connected: true, lastError: null }));
                 },
                 onClose: () => {
+                    // console.warn("[WS] close");
                     setState((s) => ({ ...s, connected: false }));
                     if (!retryRef.current.closing) scheduleReconnect();
                 },
                 onError: (e) => {
+                    // console.error("[WS] error", e);
                     setState((s) => ({ ...s, lastError: e.message }));
                 },
                 onMessage: (msg: WSMessage) => {
+                    // console.log("[WS] event", msg);
                     switch (msg.type) {
                         case "round_start":
                         case "game_start":
-                            setState((s) => ({
-                                ...s,
-                                phase: "running",
-                                roundId: msg.roundId ?? s.roundId,
-                            }));
+                            setState((s) => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId }));
                             break;
                         case "multiplier_update":
-                            setState((s) => ({
-                                ...s,
-                                multiplier: msg.multiplier,
-                                phase: "running",
-                            }));
+                            setState((s) => ({ ...s, multiplier: msg.multiplier, phase: "running" }));
                             break;
                         case "game_crash":
-                            setState((s) => ({
-                                ...s,
-                                phase: "crashed",
-                                multiplier: msg.multiplier,
-                            }));
+                            setState((s) => ({ ...s, phase: "crashed", multiplier: msg.multiplier }));
                             break;
                         case "state":
                             setState((s) => ({
@@ -99,6 +94,7 @@ export function useGame() {
                     }
                 },
             });
+
             socketRef.current = sock;
             sock.open();
         } catch (e) {
@@ -106,7 +102,7 @@ export function useGame() {
             setState((s) => ({ ...s, lastError: err }));
             scheduleReconnect();
         }
-    }, [host, initData, scheduleReconnect]);
+    }, [initData, fetchCurrentRound, wsHost, scheduleReconnect]);
 
     const close = useCallback(() => {
         retryRef.current.closing = true;
