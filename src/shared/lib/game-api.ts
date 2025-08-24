@@ -17,7 +17,7 @@ export function useGameApi() {
     const host = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
     const fetchCurrentRound = useCallback(async (): Promise<CurrentRound> => {
-        const url = `https://${host}/api/game/current`;
+        const url = `${host}/api/game/current`;
         const headers: Record<string, string> = {};
         if (initData) headers["x-telegram-init-data"] = initData;
         const res = await fetch(url, { cache: "no-store", headers });
