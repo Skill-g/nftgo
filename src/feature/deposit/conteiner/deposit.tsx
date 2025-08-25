@@ -2,7 +2,7 @@
 
 import {Card, CardContent} from "@/shared/ui/card"
 import {DepositHeader} from "@/feature/deposit/ui/deposit-header"
-import {useState, useMemo} from "react"
+import {useMemo, useState} from "react"
 import {PaymentMethod} from "@/feature/deposit/ui/payment-method"
 import {DepositInput} from "@/feature/deposit/ui/deposit-input"
 import {Button} from "@/shared/ui/button"
@@ -11,7 +11,23 @@ import {useUserContext} from "@/shared/context/UserContext"
 
 type TonConnectTxMessage = { address: string; amount: string; payload?: string }
 type TonConnectTransaction = { validUntil: number; messages: TonConnectTxMessage[] }
-type PaymentIntent = { tonConnectTx?: TonConnectTransaction; deeplink?: string }
+
+type DepositCreateResponse = {
+    orderId: string
+    depositAddress: string
+    amount: number
+    expiry: string
+    payment: {
+        network: string
+        validUntil: number
+        messages: Array<{
+            address: string
+            amountNano: string
+            text?: string
+            payloadB64?: string
+        }>
+    }
+}
 
 export function Deposit({showDepositModal, setShowDepositModal}: {
     showDepositModal: boolean
@@ -33,8 +49,27 @@ export function Deposit({showDepositModal, setShowDepositModal}: {
 
     const validAmount = numericAmount >= 1
     const disabled = !isConnected || !validAmount || !selectedPaymentMethod || submitting
-
     const buttonText = isConnected ? "Deposit" : "Please connect your wallet"
+
+    const toTonConnectTx = (resp: DepositCreateResponse): TonConnectTransaction => {
+        return {
+            validUntil: resp.payment.validUntil,
+            messages: resp.payment.messages.map(m => ({
+                address: m.address,
+                amount: m.amountNano,
+                ...(m.payloadB64 ? { payload: m.payloadB64 } : {})
+            }))
+        }
+    }
+
+    const fallbackDeeplink = (resp: DepositCreateResponse): string | null => {
+        const m = resp.payment.messages[0]
+        if (!m) return null
+        const params = new URLSearchParams()
+        params.set("amount", m.amountNano)
+        if (m.text) params.set("text", m.text)
+        return `ton://transfer/${m.address}?${params.toString()}`
+    }
 
     const handleDeposit = async () => {
         if (disabled) return
@@ -51,17 +86,19 @@ export function Deposit({showDepositModal, setShowDepositModal}: {
                 const text = await res.text()
                 throw new Error(text || `Request failed: ${res.status}`)
             }
-            const intentUnknown: unknown = await res.json()
-            const intent = intentUnknown as PaymentIntent
+            const dataUnknown: unknown = await res.json()
+            const data = dataUnknown as DepositCreateResponse
 
-            if (intent.tonConnectTx && tonConnectUI) {
-                await tonConnectUI.sendTransaction(intent.tonConnectTx)
+            if (data?.payment?.messages?.length && tonConnectUI) {
+                const tx = toTonConnectTx(data)
+                await tonConnectUI.sendTransaction(tx)
                 setShowDepositModal(false)
                 return
             }
 
-            if (intent.deeplink) {
-                window.location.href = intent.deeplink
+            const link = fallbackDeeplink(data)
+            if (link) {
+                window.location.href = link
                 return
             }
 
