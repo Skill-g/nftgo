@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
@@ -30,40 +30,28 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
         }
     }, [state.phase, resetBets]);
 
+    const isActive = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
+
     return (
         <Card
             style={{ height: "248px" }}
-            className={`bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden ${
-                state.phase !== "waiting" ? styles.background : ""
-            }`}
+            className={`bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden ${isActive ? styles.background : ""}`}
         >
             <CardContent className="p-8 text-center flex flex-col items-center justify-center" style={{ paddingTop: 1 }}>
-                {state.phase === "waiting" && (
+                {!isActive && (
                     <>
                         <div>
-                            <Image
-                                src={"/rocket/rocket.png"}
-                                alt={"rocket"}
-                                width={50}
-                                height={50}
-                                className="w-16 h-16 mx-auto text-[#984eed] mb-4"
-                            />
+                            <Image src={"/rocket/rocket.png"} alt={"rocket"} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
                         </div>
                         <h2 className="text-xl font-bold">ОЖИДАНИЕ</h2>
                         <h3 className="text-lg mb-6">СЛЕДУЮЩЕГО РАУНДА</h3>
                         <div className="h-2 w-full bg-[#96969680] rounded" />
                     </>
                 )}
-                {state.phase !== "waiting" && (
+                {isActive && (
                     <div className="relative w-full mt-12" style={{ height: 128, minHeight: 128, marginBottom: 16 }}>
-                        <div
-                            className="absolute left-0 w-full flex justify-center"
-                            style={{ top: 0, zIndex: 10, pointerEvents: "none" }}
-                        >
-              <span
-                  className="text-2xl font-bold select-none"
-                  style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}
-              >
+                        <div className="absolute left-0 w-full flex justify-center" style={{ top: 0, zIndex: 10, pointerEvents: "none" }}>
+              <span className="text-2xl font-bold select-none" style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}>
                 x{state.multiplier.toFixed(2)}
                   {state.phase === "crashed" && (
                       <span className="mt-2 text-white">
@@ -73,30 +61,8 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
                   )}
               </span>
                         </div>
-                        <div
-                            className="absolute"
-                            style={{
-                                left: `50%`,
-                                bottom: 0,
-                                width: "64px",
-                                height: "64px",
-                                transform: "translate(-50%,0%)",
-                                pointerEvents: "none"
-                            }}
-                        >
-                            <Image
-                                src={"/rocket/begu.gif"}
-                                alt="runner"
-                                width={64}
-                                height={64}
-                                style={{
-                                    width: "64px",
-                                    height: "64px",
-                                    minWidth: "64px",
-                                    minHeight: "64px",
-                                    objectFit: "contain"
-                                }}
-                            />
+                        <div className="absolute" style={{ left: `50%`, bottom: 0, width: "64px", height: "64px", transform: "translate(-50%,0%)", pointerEvents: "none" }}>
+                            <Image src={"/rocket/begu.gif"} alt="runner" width={64} height={64} style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }} />
                         </div>
                     </div>
                 )}
