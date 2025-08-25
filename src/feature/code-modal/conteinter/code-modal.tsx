@@ -36,7 +36,7 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
             }
             setInvalid(false)
             setShowPromoModal(false)
-        } catch (e: unknown) {
+        } catch {
             setInvalid(true)
         } finally {
             setSubmitting(false)
