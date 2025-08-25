@@ -1,3 +1,5 @@
+import { getBackendHost } from "@/shared/lib/host";
+
 export type WSMessage =
     | { type: "connected" }
     | { type: "round_start"; roundId: number; startTime?: string }
@@ -14,7 +16,8 @@ export type SocketHandlers = {
     onMessage?: (msg: WSMessage) => void;
 };
 
-export function makeGameSocket(host: string, roundId: number, initData: string, handlers: SocketHandlers) {
+export function makeGameSocket(roundId: number, initData: string, handlers: SocketHandlers) {
+    const host = getBackendHost();
     const scheme = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss" : "ws";
     const url = `${scheme}://${host}/ws/game/${roundId}?initData=${encodeURIComponent(initData)}`;
     let ws: WebSocket | null = null;

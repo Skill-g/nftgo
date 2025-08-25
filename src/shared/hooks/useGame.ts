@@ -15,7 +15,6 @@ export type GameState = {
 };
 
 export function useGame() {
-    const wsHost = process.env.NEXT_PUBLIC_GAME_HOST!;
     const { user } = useUserContext();
     const initData = user?.initData || "";
     const { fetchCurrentRound } = useGameApi();
@@ -31,57 +30,44 @@ export function useGame() {
     const retryRef = useRef({ tries: 0, closing: false });
     const socketRef = useRef<ReturnType<typeof makeGameSocket> | null>(null);
 
-    const scheduleReconnect = useCallback(() => {
-        retryRef.current.tries += 1;
-        const t = Math.min(20000, 1000 * Math.pow(2, retryRef.current.tries));
-        const id = setTimeout(() => {
-            if (!retryRef.current.closing) connect();
-        }, t);
-        return () => clearTimeout(id);
-    }, []);
-
     const connect = useCallback(async () => {
         if (!initData) return;
         try {
             const current = await fetchCurrentRound();
             if (retryRef.current.closing) return;
-            setState((s) => ({
-                ...s,
-                roundId: current.roundId,
-                multiplier: current.currentMultiplier ?? 1,
-            }));
+            setState(s => ({ ...s, roundId: current.roundId, multiplier: current.currentMultiplier ?? 1 }));
             socketRef.current?.close();
 
-            const sock = makeGameSocket(wsHost, current.roundId, initData, {
+            const sock = makeGameSocket(current.roundId, initData, {
                 onOpen: () => {
                     console.log("[WS] open", current.roundId);
                     retryRef.current.tries = 0;
-                    setState((s) => ({ ...s, connected: true, lastError: null }));
+                    setState(s => ({ ...s, connected: true, lastError: null }));
                 },
                 onClose: () => {
-                    // console.warn("[WS] close");
-                    setState((s) => ({ ...s, connected: false }));
+                    console.warn("[WS] close");
+                    setState(s => ({ ...s, connected: false }));
                     if (!retryRef.current.closing) scheduleReconnect();
                 },
-                onError: (e) => {
-                    // console.error("[WS] error", e);
-                    setState((s) => ({ ...s, lastError: e.message }));
+                onError: e => {
+                    console.error("[WS] error", e);
+                    setState(s => ({ ...s, lastError: e.message }));
                 },
                 onMessage: (msg: WSMessage) => {
-                    // console.log("[WS] event", msg);
+                    console.log("[WS] event", msg);
                     switch (msg.type) {
                         case "round_start":
                         case "game_start":
-                            setState((s) => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId }));
+                            setState(s => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId }));
                             break;
                         case "multiplier_update":
-                            setState((s) => ({ ...s, multiplier: msg.multiplier, phase: "running" }));
+                            setState(s => ({ ...s, multiplier: msg.multiplier, phase: "running" }));
                             break;
                         case "game_crash":
-                            setState((s) => ({ ...s, phase: "crashed", multiplier: msg.multiplier }));
+                            setState(s => ({ ...s, phase: "crashed", multiplier: msg.multiplier }));
                             break;
                         case "state":
-                            setState((s) => ({
+                            setState(s => ({
                                 ...s,
                                 phase: msg.phase ?? s.phase,
                                 multiplier: msg.multiplier ?? s.multiplier,
@@ -89,7 +75,7 @@ export function useGame() {
                             }));
                             break;
                         case "error":
-                            setState((s) => ({ ...s, lastError: msg.message }));
+                            setState(s => ({ ...s, lastError: msg.message }));
                             break;
                     }
                 },
@@ -99,10 +85,19 @@ export function useGame() {
             sock.open();
         } catch (e) {
             const err = e instanceof Error ? e.message : "fetch failed";
-            setState((s) => ({ ...s, lastError: err }));
+            setState(s => ({ ...s, lastError: err }));
             scheduleReconnect();
         }
-    }, [initData, fetchCurrentRound, wsHost, scheduleReconnect]);
+    }, [initData, fetchCurrentRound]);
+
+    const scheduleReconnect = useCallback(() => {
+        retryRef.current.tries += 1;
+        const t = Math.min(20000, 1000 * Math.pow(2, retryRef.current.tries));
+        const id = setTimeout(() => {
+            if (!retryRef.current.closing) connect();
+        }, t);
+        return () => clearTimeout(id);
+    }, [connect]);
 
     const close = useCallback(() => {
         retryRef.current.closing = true;

@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useUserContext } from "@/shared/context/UserContext";
+import { getBackendHost } from "@/shared/lib/host";
 
 export type CurrentRound = {
     roundId: number;
@@ -14,10 +15,10 @@ export type CurrentRound = {
 export function useGameApi() {
     const { user } = useUserContext();
     const initData = user?.initData ?? "";
-    const host = process.env.NEXT_PUBLIC_BACKEND_URL!;
+    const host = getBackendHost();
 
     const fetchCurrentRound = useCallback(async (): Promise<CurrentRound> => {
-        const url = `${host}/api/game/current`;
+        const url = `https://${host}/api/game/current`;
         const headers: Record<string, string> = {};
         if (initData) headers["x-telegram-init-data"] = initData;
         const res = await fetch(url, { cache: "no-store", headers });
