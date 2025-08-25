@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
@@ -42,8 +42,70 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
     }, [state.phase, state.timeToStart]);
 
     const total = waitTotalRef.current || state.timeToStart || 0;
-    const ratio = total > 0 ? state.timeToStart / total : 0;
-    const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+    const fillPercent =
+        total > 0 ? Math.max(0, Math.min(100, Math.round(((total - state.timeToStart) / total) * 100))) : 0;
+
+    const trackRef = useRef<HTMLDivElement | null>(null);
+    const [trackWidth, setTrackWidth] = useState(0);
+    const [runnerPx, setRunnerPx] = useState(-80);
+    const rafRef = useRef<number | null>(null);
+    const lastRoundRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const upd = () => setTrackWidth(trackRef.current ? trackRef.current.offsetWidth : 0);
+        upd();
+        window.addEventListener("resize", upd);
+        return () => window.removeEventListener("resize", upd);
+    }, []);
+
+    useEffect(() => {
+        if (!isActive) {
+            setRunnerPx(-80);
+            return;
+        }
+    }, [isActive]);
+
+    const animTo = (target: number, duration: number) => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        const start = performance.now();
+        const from = runnerPx;
+        const dx = target - from;
+        const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+        const step = (now: number) => {
+            const t = Math.min(1, (now - start) / duration);
+            setRunnerPx(from + dx * ease(t));
+            if (t < 1) {
+                rafRef.current = requestAnimationFrame(step);
+            } else {
+                rafRef.current = null;
+            }
+        };
+        rafRef.current = requestAnimationFrame(step);
+    };
+
+    useEffect(() => {
+        if (state.phase === "running" && trackWidth > 0) {
+            if (state.roundId && state.roundId !== lastRoundRef.current) {
+                lastRoundRef.current = state.roundId;
+                setRunnerPx(-80);
+                const center = trackWidth * 0.5;
+                animTo(center, 650);
+            }
+        }
+    }, [state.phase, state.roundId, trackWidth]);
+
+    useEffect(() => {
+        if (state.phase === "crashed" && trackWidth > 0) {
+            const offRight = trackWidth + 120;
+            animTo(offRight, 700);
+        }
+    }, [state.phase, trackWidth]);
+
+    useEffect(() => {
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        };
+    }, []);
 
     return (
         <Card
@@ -61,7 +123,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
                         <div className="h-2 w-full bg-[#96969680] rounded overflow-hidden">
                             <div
                                 style={{
-                                    width: `${percent}%`,
+                                    width: `${fillPercent}%`,
                                     height: "100%",
                                     backgroundColor: "#8845F5",
                                     transition: "width 250ms linear",
@@ -71,7 +133,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
                     </>
                 )}
                 {isActive && (
-                    <div className="relative w-full mt-12" style={{ height: 128, minHeight: 128, marginBottom: 16 }}>
+                    <div ref={trackRef} className="relative w-full mt-12" style={{ height: 128, minHeight: 128, marginBottom: 16 }}>
                         <div className="absolute left-0 w-full flex justify-center" style={{ top: 0, zIndex: 10, pointerEvents: "none" }}>
               <span className="text-2xl font-bold select-none" style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}>
                 x{state.multiplier.toFixed(2)}
@@ -83,8 +145,24 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
                   )}
               </span>
                         </div>
-                        <div className="absolute" style={{ left: `50%`, bottom: 0, width: "64px", height: "64px", transform: "translate(-50%,0%)", pointerEvents: "none" }}>
-                            <Image src={"/rocket/begu.gif"} alt="runner" width={64} height={64} style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }} />
+                        <div
+                            className="absolute"
+                            style={{
+                                left: `${runnerPx}px`,
+                                bottom: 0,
+                                width: "64px",
+                                height: "64px",
+                                transform: "translate(-50%,0%)",
+                                pointerEvents: "none",
+                            }}
+                        >
+                            <Image
+                                src={"/rocket/begu.gif"}
+                                alt="runner"
+                                width={64}
+                                height={64}
+                                style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }}
+                            />
                         </div>
                     </div>
                 )}
