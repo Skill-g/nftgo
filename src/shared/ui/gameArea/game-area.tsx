@@ -32,37 +32,35 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
 
     const isActive = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
 
-    const waitTotalRef = useRef(0);
-    useEffect(() => {
-        if (state.phase === "waiting") {
-            if (state.timeToStart > (waitTotalRef.current || 0)) waitTotalRef.current = state.timeToStart;
-        } else {
-            waitTotalRef.current = 0;
-        }
-    }, [state.phase, state.timeToStart]);
-
-    const total = waitTotalRef.current || state.timeToStart || 0;
-    const fillPercent =
-        total > 0 ? Math.max(0, Math.min(100, Math.round(((total - state.timeToStart) / total) * 100))) : 0;
+    const total = state.waitTotal || state.timeToStart || 0;
+    const fillPercent = total > 0 ? Math.max(0, Math.min(100, Math.round(((total - state.timeToStart) / total) * 100))) : 0;
 
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
     const [runnerPx, setRunnerPx] = useState(-80);
     const rafRef = useRef<number | null>(null);
-    const lastRoundRef = useRef<number | null>(null);
+    const animatedRoundRef = useRef<number | null>(null);
 
     useEffect(() => {
-        const upd = () => setTrackWidth(trackRef.current ? trackRef.current.offsetWidth : 0);
-        upd();
-        window.addEventListener("resize", upd);
-        return () => window.removeEventListener("resize", upd);
-    }, []);
-
-    useEffect(() => {
-        if (!isActive) {
-            setRunnerPx(-80);
-            return;
+        if (!isActive) return;
+        const el = trackRef.current;
+        if (!el) return;
+        const measure = () => setTrackWidth(el.getBoundingClientRect().width);
+        measure();
+        let ro: ResizeObserver | null = null;
+        if (typeof ResizeObserver !== "undefined") {
+            ro = new ResizeObserver(() => measure());
+            ro.observe(el);
+        } else {
+            const onResize = () => measure();
+            window.addEventListener("resize", onResize);
+            return () => window.removeEventListener("resize", onResize);
         }
+        return () => ro && ro.disconnect();
+    }, [isActive]);
+
+    useEffect(() => {
+        if (!isActive) setRunnerPx(-80);
     }, [isActive]);
 
     const animTo = (target: number, duration: number) => {
@@ -84,27 +82,23 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
     };
 
     useEffect(() => {
-        if (state.phase === "running" && trackWidth > 0) {
-            if (state.roundId && state.roundId !== lastRoundRef.current) {
-                lastRoundRef.current = state.roundId;
-                setRunnerPx(-80);
-                const center = trackWidth * 0.5;
-                animTo(center, 650);
-            }
-        }
+        if (state.phase !== "running" || trackWidth <= 0 || !state.roundId) return;
+        if (animatedRoundRef.current === state.roundId) return;
+        animatedRoundRef.current = state.roundId;
+        setRunnerPx(-80);
+        const center = trackWidth * 0.5;
+        animTo(center, 650);
     }, [state.phase, state.roundId, trackWidth]);
 
     useEffect(() => {
-        if (state.phase === "crashed" && trackWidth > 0) {
-            const offRight = trackWidth + 120;
-            animTo(offRight, 700);
-        }
+        if (state.phase !== "crashed" || trackWidth <= 0) return;
+        const offRight = trackWidth + 120;
+        animTo(offRight, 700);
+        animatedRoundRef.current = null;
     }, [state.phase, trackWidth]);
 
     useEffect(() => {
-        return () => {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        };
+        if (rafRef.current) return () => cancelAnimationFrame(rafRef.current!);
     }, []);
 
     return (

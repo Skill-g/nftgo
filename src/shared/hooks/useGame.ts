@@ -13,7 +13,16 @@ export type GameState = {
     connected: boolean;
     lastError: string | null;
     timeToStart: number;
+    waitTotal: number;
 };
+
+type WaitMeta = {
+    roundId: number;
+    deadlineISO: string;
+    waitTotal: number;
+};
+
+const WAIT_META_KEY = "game_wait_meta";
 
 export function useGame() {
     const { user } = useUserContext();
@@ -27,12 +36,12 @@ export function useGame() {
         connected: false,
         lastError: null,
         timeToStart: 0,
+        waitTotal: 0,
     });
 
     const retryRef = useRef({ tries: 0, closing: false });
     const socketRef = useRef<ReturnType<typeof makeGameSocket> | null>(null);
     const timerRef = useRef<number | null>(null);
-    const deadlineRef = useRef<number | null>(null);
     const serverOffsetRef = useRef<number>(0);
 
     const clearTimer = useCallback(() => {
@@ -42,105 +51,115 @@ export function useGame() {
         }
     }, []);
 
-    const startTimer = useCallback((betDeadlineIso?: string) => {
+    const saveWaitMeta = useCallback((meta: WaitMeta) => {
+        try {
+            sessionStorage.setItem(WAIT_META_KEY, JSON.stringify(meta));
+        } catch {}
+    }, []);
+
+    const loadWaitMeta = useCallback((): WaitMeta | null => {
+        try {
+            const raw = sessionStorage.getItem(WAIT_META_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw) as WaitMeta;
+            if (!parsed.deadlineISO) return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    }, []);
+
+    const clearWaitMeta = useCallback(() => {
+        try {
+            sessionStorage.removeItem(WAIT_META_KEY);
+        } catch {}
+    }, []);
+
+    const startTimer = useCallback((roundId: number, deadlineISO?: string, preferTotal?: number) => {
         clearTimer();
-        if (!betDeadlineIso) {
-            setState(s => ({ ...s, timeToStart: 0 }));
-            deadlineRef.current = null;
+        if (!deadlineISO) {
+            setState(s => ({ ...s, timeToStart: 0, waitTotal: preferTotal ?? s.waitTotal }));
             return;
         }
-        const dl = new Date(betDeadlineIso).getTime();
+        const dl = Date.parse(deadlineISO);
         if (!Number.isFinite(dl)) {
-            setState(s => ({ ...s, timeToStart: 0 }));
-            deadlineRef.current = null;
+            setState(s => ({ ...s, timeToStart: 0, waitTotal: preferTotal ?? s.waitTotal }));
             return;
         }
-        deadlineRef.current = dl;
+        const now = Date.now() + serverOffsetRef.current;
+        const firstRemaining = Math.max(0, Math.ceil((dl - now) / 1000));
+        const total = Math.max(preferTotal ?? firstRemaining, 0);
+        saveWaitMeta({ roundId, deadlineISO, waitTotal: total });
         const tick = () => {
-            const now = Date.now() + serverOffsetRef.current;
-            const seconds = Math.max(0, Math.ceil((dl - now) / 1000));
-            setState(s => ({ ...s, timeToStart: seconds }));
-            if (seconds <= 0) clearTimer();
+            const tNow = Date.now() + serverOffsetRef.current;
+            const remaining = Math.max(0, Math.ceil((dl - tNow) / 1000));
+            setState(s => ({ ...s, timeToStart: remaining, waitTotal: total }));
+            if (remaining <= 0) clearTimer();
         };
         tick();
         timerRef.current = window.setInterval(tick, 250);
-    }, [clearTimer]);
+    }, [clearTimer, saveWaitMeta]);
 
     const scheduleReconnect = useCallback(() => {
         retryRef.current.tries += 1;
         const t = Math.min(20000, 1000 * Math.pow(2, retryRef.current.tries));
-        console.warn("[GAME] scheduleReconnect", { tries: retryRef.current.tries, delayMs: t });
         const id = setTimeout(() => {
-            if (!retryRef.current.closing) {
-                console.log("[GAME] reconnecting...");
-                connect();
-            }
+            if (!retryRef.current.closing) connect();
         }, t);
         return () => clearTimeout(id);
     }, []);
 
     const connect = useCallback(async () => {
-        if (!initData) {
-            console.warn("[GAME] connect skipped: no initData");
-            return;
-        }
+        if (!initData) return;
         try {
-            console.log("[GAME] fetchCurrentRound start");
             const current = await fetchCurrentRound();
-            console.log("[GAME] fetchCurrentRound ok", current);
-            if (retryRef.current.closing) {
-                console.warn("[GAME] connect aborted: closing flag");
-                return;
-            }
+            if (retryRef.current.closing) return;
             setState(s => ({
                 ...s,
                 roundId: current.roundId,
                 multiplier: current.currentMultiplier ?? 1,
             }));
-            startTimer(current.betDeadline);
-            if (socketRef.current) {
-                console.log("[WS] closing previous socket");
-                socketRef.current.close();
-            }
+            const meta = loadWaitMeta();
+            const preferTotal = meta && meta.roundId === current.roundId ? meta.waitTotal : undefined;
+            startTimer(current.roundId, current.betDeadline, preferTotal);
+            socketRef.current?.close();
 
             const sock = makeGameSocket(current.roundId, initData, {
                 onOpen: () => {
-                    console.log("[WS] open", { roundId: current.roundId });
                     retryRef.current.tries = 0;
                     setState(s => ({ ...s, connected: true, lastError: null }));
                 },
-                onClose: (code, reason) => {
-                    console.warn("[WS] close", { code, reason });
+                onClose: () => {
                     setState(s => ({ ...s, connected: false }));
                     if (!retryRef.current.closing) scheduleReconnect();
                 },
                 onError: e => {
-                    console.error("[WS] error", e);
                     setState(s => ({ ...s, lastError: e.message }));
                 },
                 onMessage: (msg: WSMessage) => {
-                    console.log("[WS] event", msg);
                     switch (msg.type) {
-                        case "round_start":
-                            setState(s => ({ ...s, phase: "waiting", roundId: msg.roundId ?? s.roundId }));
+                        case "round_start": {
+                            setState(s => ({ ...s, phase: "waiting", roundId: msg.roundId ?? s.roundId, multiplier: 1 }));
                             (async () => {
                                 try {
                                     const r = await fetchCurrentRound();
-                                    setState(s => ({ ...s, roundId: r.roundId, multiplier: r.currentMultiplier ?? s.multiplier }));
-                                    startTimer(r.betDeadline);
-                                } catch (err) {
-                                    console.error("[GAME] refetch on round_start failed", err);
-                                }
+                                    const m = loadWaitMeta();
+                                    const prefer = m && m.roundId === r.roundId ? m.waitTotal : undefined;
+                                    startTimer(r.roundId, r.betDeadline, prefer);
+                                } catch {}
                             })();
                             break;
+                        }
                         case "game_start":
-                            setState(s => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId, timeToStart: 0 }));
+                            clearWaitMeta();
                             clearTimer();
+                            setState(s => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId, timeToStart: 0 }));
                             break;
                         case "multiplier_update":
                             setState(s => ({ ...s, multiplier: msg.multiplier, phase: "running" }));
                             break;
                         case "game_crash":
+                            clearWaitMeta();
                             setState(s => ({ ...s, phase: "crashed", multiplier: msg.crashMultiplier }));
                             break;
                         case "state":
@@ -166,30 +185,45 @@ export function useGame() {
             });
 
             socketRef.current = sock;
-            console.log("[WS] open() call");
             sock.open();
         } catch (e) {
             const err = e instanceof Error ? e.message : "fetch failed";
-            console.error("[GAME] connect error", err);
             setState(s => ({ ...s, lastError: err }));
             scheduleReconnect();
         }
-    }, [initData, fetchCurrentRound, startTimer, clearTimer, scheduleReconnect]);
+    }, [initData, fetchCurrentRound, startTimer, loadWaitMeta, clearTimer, clearWaitMeta, scheduleReconnect]);
 
     const close = useCallback(() => {
-        console.log("[GAME] close()");
         retryRef.current.closing = true;
         socketRef.current?.close();
         clearTimer();
     }, [clearTimer]);
 
     useEffect(() => {
-        console.log("[GAME] effect mount", { hasInitData: !!initData });
+        const meta = loadWaitMeta();
+        if (meta) {
+            const now = Date.now();
+            const dl = Date.parse(meta.deadlineISO);
+            if (Number.isFinite(dl) && dl > now) {
+                setState(s => ({
+                    ...s,
+                    phase: "waiting",
+                    roundId: meta.roundId,
+                    timeToStart: Math.max(0, Math.ceil((dl - now) / 1000)),
+                    waitTotal: meta.waitTotal,
+                }));
+                startTimer(meta.roundId, meta.deadlineISO, meta.waitTotal);
+            } else {
+                clearWaitMeta();
+            }
+        }
+    }, [loadWaitMeta, startTimer, clearWaitMeta]);
+
+    useEffect(() => {
         if (!initData) return;
         retryRef.current.closing = false;
         connect();
         return () => {
-            console.log("[GAME] effect cleanup");
             const ref = retryRef.current;
             ref.closing = true;
             socketRef.current?.close();
@@ -197,11 +231,7 @@ export function useGame() {
         };
     }, [connect, initData, clearTimer]);
 
-    const reconnect = useCallback(() => {
-        console.log("[GAME] api.reconnect()");
-        return connect();
-    }, [connect]);
-
+    const reconnect = useCallback(() => connect(), [connect]);
     const api = useMemo(() => ({ reconnect, close }), [reconnect, close]);
 
     return { state, api };
