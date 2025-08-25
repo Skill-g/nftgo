@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
@@ -32,6 +32,19 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
 
     const isActive = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
 
+    const waitTotalRef = useRef(0);
+    useEffect(() => {
+        if (state.phase === "waiting") {
+            if (state.timeToStart > (waitTotalRef.current || 0)) waitTotalRef.current = state.timeToStart;
+        } else {
+            waitTotalRef.current = 0;
+        }
+    }, [state.phase, state.timeToStart]);
+
+    const total = waitTotalRef.current || state.timeToStart || 0;
+    const ratio = total > 0 ? state.timeToStart / total : 0;
+    const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+
     return (
         <Card
             style={{ height: "248px" }}
@@ -44,8 +57,17 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
                             <Image src={"/rocket/rocket.png"} alt={"rocket"} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
                         </div>
                         <h2 className="text-xl font-bold">ОЖИДАНИЕ</h2>
-                        <h3 className="text-lg mb-6">СЛЕДУЮЩЕГО РАУНДА</h3>
-                        <div className="h-2 w-full bg-[#96969680] rounded" />
+                        <h3 className="text-lg mb-3">СЛЕДУЮЩЕГО РАУНДА</h3>
+                        <div className="h-2 w-full bg-[#96969680] rounded overflow-hidden">
+                            <div
+                                style={{
+                                    width: `${percent}%`,
+                                    height: "100%",
+                                    backgroundColor: "#8845F5",
+                                    transition: "width 250ms linear",
+                                }}
+                            />
+                        </div>
                     </>
                 )}
                 {isActive && (

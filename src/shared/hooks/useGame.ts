@@ -12,6 +12,7 @@ export type GameState = {
     roundId: number | null;
     connected: boolean;
     lastError: string | null;
+    timeToStart: number;
 };
 
 export function useGame() {
@@ -25,10 +26,45 @@ export function useGame() {
         roundId: null,
         connected: false,
         lastError: null,
+        timeToStart: 0,
     });
 
     const retryRef = useRef({ tries: 0, closing: false });
     const socketRef = useRef<ReturnType<typeof makeGameSocket> | null>(null);
+    const timerRef = useRef<number | null>(null);
+    const deadlineRef = useRef<number | null>(null);
+    const serverOffsetRef = useRef<number>(0);
+
+    const clearTimer = useCallback(() => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    }, []);
+
+    const startTimer = useCallback((betDeadlineIso?: string) => {
+        clearTimer();
+        if (!betDeadlineIso) {
+            setState(s => ({ ...s, timeToStart: 0 }));
+            deadlineRef.current = null;
+            return;
+        }
+        const dl = new Date(betDeadlineIso).getTime();
+        if (!Number.isFinite(dl)) {
+            setState(s => ({ ...s, timeToStart: 0 }));
+            deadlineRef.current = null;
+            return;
+        }
+        deadlineRef.current = dl;
+        const tick = () => {
+            const now = Date.now() + serverOffsetRef.current;
+            const seconds = Math.max(0, Math.ceil((dl - now) / 1000));
+            setState(s => ({ ...s, timeToStart: seconds }));
+            if (seconds <= 0) clearTimer();
+        };
+        tick();
+        timerRef.current = window.setInterval(tick, 250);
+    }, [clearTimer]);
 
     const scheduleReconnect = useCallback(() => {
         retryRef.current.tries += 1;
@@ -56,7 +92,12 @@ export function useGame() {
                 console.warn("[GAME] connect aborted: closing flag");
                 return;
             }
-            setState(s => ({ ...s, roundId: current.roundId, multiplier: current.currentMultiplier ?? 1 }));
+            setState(s => ({
+                ...s,
+                roundId: current.roundId,
+                multiplier: current.currentMultiplier ?? 1,
+            }));
+            startTimer(current.betDeadline);
             if (socketRef.current) {
                 console.log("[WS] closing previous socket");
                 socketRef.current.close();
@@ -81,8 +122,20 @@ export function useGame() {
                     console.log("[WS] event", msg);
                     switch (msg.type) {
                         case "round_start":
+                            setState(s => ({ ...s, phase: "waiting", roundId: msg.roundId ?? s.roundId }));
+                            (async () => {
+                                try {
+                                    const r = await fetchCurrentRound();
+                                    setState(s => ({ ...s, roundId: r.roundId, multiplier: r.currentMultiplier ?? s.multiplier }));
+                                    startTimer(r.betDeadline);
+                                } catch (err) {
+                                    console.error("[GAME] refetch on round_start failed", err);
+                                }
+                            })();
+                            break;
                         case "game_start":
-                            setState(s => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId }));
+                            setState(s => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId, timeToStart: 0 }));
+                            clearTimer();
                             break;
                         case "multiplier_update":
                             setState(s => ({ ...s, multiplier: msg.multiplier, phase: "running" }));
@@ -98,10 +151,12 @@ export function useGame() {
                             });
                             break;
                         case "pong":
-                            console.log("[WS] pong");
+                            if (typeof msg.ts === "number") {
+                                const measured = msg.ts - Date.now();
+                                serverOffsetRef.current = Math.abs(serverOffsetRef.current) < 1 ? measured : (serverOffsetRef.current * 4 + measured) / 5;
+                            }
                             break;
                         case "connected":
-                            console.log("[WS] connected ack");
                             break;
                         case "error":
                             setState(s => ({ ...s, lastError: msg.message }));
@@ -119,13 +174,14 @@ export function useGame() {
             setState(s => ({ ...s, lastError: err }));
             scheduleReconnect();
         }
-    }, [initData, fetchCurrentRound, scheduleReconnect]);
+    }, [initData, fetchCurrentRound, startTimer, clearTimer, scheduleReconnect]);
 
     const close = useCallback(() => {
         console.log("[GAME] close()");
         retryRef.current.closing = true;
         socketRef.current?.close();
-    }, []);
+        clearTimer();
+    }, [clearTimer]);
 
     useEffect(() => {
         console.log("[GAME] effect mount", { hasInitData: !!initData });
@@ -137,8 +193,9 @@ export function useGame() {
             const ref = retryRef.current;
             ref.closing = true;
             socketRef.current?.close();
+            clearTimer();
         };
-    }, [connect, initData]);
+    }, [connect, initData, clearTimer]);
 
     const reconnect = useCallback(() => {
         console.log("[GAME] api.reconnect()");
