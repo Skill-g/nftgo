@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Button } from "@/shared/ui/button";
 import { useUserContext } from "@/shared/context/UserContext";
 
 export function ReferralBalance() {
@@ -22,7 +21,6 @@ export function ReferralBalance() {
             </span>
                     </div>
                 </div>
-                <Button className="bg-[#8845f5] hover:bg-[#533189] text-white rounded-[10px] px-6 py-2">Withdraw</Button>
             </div>
         </div>
     );

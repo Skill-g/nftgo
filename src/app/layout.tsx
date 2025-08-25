@@ -45,7 +45,7 @@ export default function RootLayout({
         '/profile/lock.svg',
         '/profile/nft-2.svg',
         '/profile/nftGoLogo.svg',
-        '/rocket/deposit-2.svg',
+        '/rocket/deposit.svg',
         '/rocket/rocket.png',
         '/rocket/wifi.png'
     ];

@@ -11,7 +11,7 @@ export default function Page() {
             <Banner title={'Инвентарь'} img={'/profile/lock.svg'}/>
             <LanguageSelection/>
             <div>
-                <h2 className="text-xl font-bold text-white mb-4">Инвентарь</h2>
+                <h2 className="text-xl font-bold text-white mb-4">История игр</h2>
                 <NftList isProfile={true} imgNft={'/profile/nft-2.svg'}/>
             </div>
         </div>
