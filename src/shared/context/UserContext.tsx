@@ -1,5 +1,5 @@
 "use client"
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authWithBackend } from "@/feature/auth/authWithBackend";
 
 type TelegramUser = {
@@ -8,7 +8,7 @@ type TelegramUser = {
     username: string;
     photoUrl?: string;
     telegramId: string;
-    languageCode: string;
+    languageCode: "ru" | "en";
     createdAt: string;
     initData: string;
 };
@@ -29,6 +29,7 @@ type UserContextType = {
     referralData: ReferralSummary | null;
     loading: boolean;
     error: Error | null;
+    setPreferredLanguage: (lang: "ru" | "en") => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -40,7 +41,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        const tg = window.Telegram?.WebApp;
+        const tg = (window as any).Telegram?.WebApp;
         const initData = tg?.initData || "";
         if (!initData) {
             setLoading(false);
@@ -49,8 +50,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         const fetchUserAndReferralData = async () => {
             try {
-                const user = await authWithBackend(initData);
-                setUser({ ...user, initData });
+                const authedUser = await authWithBackend(initData);
+                setUser({ ...authedUser, initData });
 
                 const referralResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/referral/summary`, {
                     method: "POST",
@@ -59,8 +60,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 });
 
                 if (!referralResponse.ok) throw new Error("Failed to fetch referral summary");
-                const referralData = await referralResponse.json();
-                setReferralData(referralData);
+                const referralJson = await referralResponse.json();
+                setReferralData(referralJson);
             } catch (err) {
                 setError(err as Error);
             } finally {
@@ -71,6 +72,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         fetchUserAndReferralData();
     }, []);
 
+    const setPreferredLanguage = useCallback(
+        async (lang: "ru" | "en") => {
+            if (!user?.initData) throw new Error("initData is missing");
+
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/user/language`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    initData: user.initData,
+                    language: lang,
+                }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                throw new Error(text || "Failed to update language");
+            }
+
+            setUser((prev) => (prev ? { ...prev, languageCode: lang } : prev));
+        },
+        [user?.initData]
+    );
+
     if (loading) {
         return <div className="text-white text-center"></div>;
     }
@@ -80,7 +104,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <UserContext.Provider value={{ user, referralData, loading, error }}>
+        <UserContext.Provider value={{ user, referralData, loading, error, setPreferredLanguage }}>
             {children}
         </UserContext.Provider>
     );

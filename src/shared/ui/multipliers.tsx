@@ -235,7 +235,7 @@ export function Multipliers({
                 }
             },
         });
-    }, [active, queueLimit, resolvedMode]);
+     }, [active, queueLimit, resolvedMode]);
 
     return (
         <div

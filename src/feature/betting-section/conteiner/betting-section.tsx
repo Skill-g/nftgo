@@ -33,9 +33,9 @@ export function BettingSection({
     const waitingGame = gamePhase === "waiting";
 
     return (
-        <Card className="bg-[#231c46] border-[#533189] ">
-            <CardContent className="px-4">
-                <div className="mb-4">
+        <Card className="bg-[#231c46] border-none py-4">
+            <CardContent className="px-4 gap-[1px]">
+                <div className="mb-2">
                     <span className="text-[#969696] text-sm">Выбрать тип ставки</span>
                 </div>
                 <BetTabs activeTab={activeTab} setActiveTab={setActiveTab} />

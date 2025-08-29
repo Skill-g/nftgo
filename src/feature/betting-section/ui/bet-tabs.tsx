@@ -4,7 +4,7 @@ import {Wallet, Lock} from "lucide-react";
 export function BetTabs({activeTab, setActiveTab}: {activeTab: string, setActiveTab: (activeTab: string) => void}) {
 
     return (
-        <div className="flex gap-2 mb-6 bg-[#262352]" style={{ borderRadius: 10}}>
+        <div className="flex gap-2 mb-3 bg-[#262352]" style={{ borderRadius: 10}}>
             <Button
                 onClick={() => setActiveTab("balance")}
                 className={`flex-1 ${
