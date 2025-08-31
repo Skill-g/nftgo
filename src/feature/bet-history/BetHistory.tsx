@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import {getBackendHost} from "@/shared/lib/host";
-import {useUserContext} from "@/shared/context/UserContext";
+import { getBackendHost } from "@/shared/lib/host";
+import { useUserContext } from "@/shared/context/UserContext";
 
-type BetStatus = "pending" | "lost" | "cashed" | "cancelled" | string;
+type BetStatus = "pending" | "lost" | "cashed" | "cancelled" | "active" | string;
 
 type BetItem = {
     betId: number;
@@ -54,21 +54,16 @@ const formatDateTime = (iso: string) => {
     }
 };
 
-const StatusBadge = ({ status }: { status: BetStatus }) => {
+const floorTo1Decimal = (n: number) => Math.floor(n * 10) / 10;
+
+const StatusBadge = ({ label, kind }: { label: string; kind: "win" | "loss" | "pending" | "cancelled" }) => {
     const map: Record<string, string> = {
-        cashed: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30",
+        win: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30",
+        loss: "bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30",
         pending: "bg-yellow-500/15 text-yellow-300 ring-1 ring-yellow-500/30",
-        lost: "bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30",
         cancelled: "bg-slate-500/15 text-slate-300 ring-1 ring-slate-500/30",
     };
-    const cls =
-        map[status] ??
-        "bg-slate-500/15 text-slate-300 ring-1 ring-slate-500/30";
-    return (
-        <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
-      {status}
-    </span>
-    );
+    return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[kind]}`}>{label}</span>;
 };
 
 export function BetHistory({
@@ -180,7 +175,6 @@ export function BetHistory({
         }
     };
 
-
     if (loading) {
         return (
             <div className="space-y-2">
@@ -192,69 +186,77 @@ export function BetHistory({
     }
 
     if (error) {
-        return (
-            <div className="text-red-400 text-sm text-center">
-                Ошибка: {error}
-            </div>
-        );
+        return <div className="text-red-400 text-sm text-center">Ошибка: {error}</div>;
     }
 
     if (!items.length) {
-        return (
-            <div className="text-slate-300 text-sm text-center">
-                Пока нет ставок.
-            </div>
-        );
+        return <div className="text-slate-300 text-sm text-center">Пока нет ставок.</div>;
     }
 
     return (
         <div className="flex flex-col gap-2">
             <ul className="divide-y divide-white/5 rounded-lg overflow-hidden ring-1 ring-white/10 bg-white/5">
-                {items.map((bet) => (
-                    <li key={bet.betId} className="p-3 sm:p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-sm text-white/80">
-                                x{bet.cashedOutMultiplier ?? bet.autoCashout ?? "-"}
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                  <span className="text-white font-medium truncate">
-                    Раунд {bet.roundId ?? "—"}
-                  </span>
-                                    <StatusBadge status={bet.status} />
-                                    {bet.isOrphaned ? (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30">
-                      orphaned
-                    </span>
-                                    ) : null}
-                                </div>
-                                <div className="text-xs text-white/60">
-                                    {formatDateTime(bet.createdAt)}
-                                </div>
-                            </div>
-                        </div>
+                {items.map((bet) => {
+                    const win = Number(bet.winAmount) > 0;
+                    const rawMult = bet.cashedOutMultiplier ?? bet.autoCashout ?? null;
+                    const multStr = win && rawMult ? `x${floorTo1Decimal(rawMult).toFixed(1)}` : "x-";
+                    let badgeLabel = "";
+                    let badgeKind: "win" | "loss" | "pending" | "cancelled" = "pending";
+                    if (bet.status === "cancelled") {
+                        badgeLabel = "Отменено";
+                        badgeKind = "cancelled";
+                    } else if (bet.status === "pending") {
+                        badgeLabel = "В процессе";
+                        badgeKind = "pending";
+                    } else if (win || bet.status === "cashed") {
+                        badgeLabel = "Выиграл";
+                        badgeKind = "win";
+                    } else {
+                        badgeLabel = "Проиграл";
+                        badgeKind = "loss";
+                    }
 
-                        <div className="text-right">
-                            <div className="text-sm text-white">
-                                Ставка: <span className="font-semibold">{bet.amount}</span>
+                    return (
+                        <li key={bet.betId} className="p-3 sm:p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center text-sm text-white/80">
+                                    {multStr}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white font-medium truncate">Раунд {bet.roundId ?? "—"}</span>
+                                        <StatusBadge label={badgeLabel} kind={badgeKind} />
+                                        {bet.isOrphaned ? (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30">
+                        orphaned
+                      </span>
+                                        ) : null}
+                                    </div>
+                                    <div className="text-xs text-white/60">{formatDateTime(bet.createdAt)}</div>
+                                </div>
                             </div>
-                            <div className="text-xs text-white/70">
-                                Выигрыш:{" "}
-                                <span className={Number(bet.winAmount) > 0 ? "text-emerald-300 font-medium" : "text-white/70"}>
-                  {bet.winAmount ?? 0}
-                </span>
+
+                            <div className="text-right">
+                                <div className="text-sm text-white">
+                                    Ставка: <span className="font-semibold">{bet.amount}</span>
+                                </div>
+                                <div className="text-xs text-white/70">
+                                    Выигрыш:{" "}
+                                    <span className={win ? "text-emerald-300 font-medium" : "text-rose-300 font-medium"}>
+                    {Number(bet.winAmount ?? 0)}
+                  </span>
+                                </div>
                             </div>
-                        </div>
-                    </li>
-                ))}
+                        </li>
+                    );
+                })}
             </ul>
 
             {hasNext && (
                 <button
                     onClick={loadMore}
                     disabled={loadingMore}
-                    className="mt-2 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium
-                     bg-white/10 hover:bg-white/15 text-white ring-1 ring-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-2 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-white ring-1 ring-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loadingMore ? "Загрузка..." : "Загрузить ещё"}
                 </button>
