@@ -2,7 +2,7 @@
 import {UserProfile} from "@/feature/user-profile";
 import {Banner} from "@/shared/ui/banner";
 import {LanguageSelection} from "@/feature/language-selection";
-import {NftList} from "@/feature/grid";
+import {BetHistory} from "@/feature/bet-history";
 
 export default function Page() {
     return (
@@ -12,7 +12,7 @@ export default function Page() {
             <LanguageSelection/>
             <div>
                 <h2 className="text-xl font-bold text-white mb-4">История игр</h2>
-                <NftList isProfile={true} imgNft={'/profile/nft-2.svg'}/>
+                <BetHistory pageSize={20} includeOrphaned={false} />
             </div>
         </div>
     )

@@ -10,9 +10,10 @@ type GameAreaProps = {
     resetBets: () => void;
     setGamePhase: (phase: string) => void;
     setCurrentMultiplier: (multiplier: number) => void;
+    setRoundId: (id: number | null) => void;
 };
 
-export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: GameAreaProps) {
+export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
     const { state } = useGame();
 
     useEffect(() => {
@@ -22,6 +23,10 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier }: Game
     useEffect(() => {
         setCurrentMultiplier(state.multiplier);
     }, [state.multiplier, setCurrentMultiplier]);
+
+    useEffect(() => {
+        setRoundId(state.roundId ?? null);
+    }, [state.roundId, setRoundId]);
 
     useEffect(() => {
         if (state.phase === "crashed") {
