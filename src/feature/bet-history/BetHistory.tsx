@@ -89,7 +89,7 @@ export function BetHistory({
     const backendUrl = useMemo(() => {
         const host = getBackendHost();
         if (!host) return null;
-        return `${host}/api/game/user/bets/history`;
+        return `https://${host}/api/game/user/bets/history`;
     }, []);
 
     const fetchPage = useCallback(
