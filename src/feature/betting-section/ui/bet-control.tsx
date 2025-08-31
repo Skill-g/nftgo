@@ -11,6 +11,7 @@ type BetControlProps = {
     setBetAmount1: (value: number) => void;
     placed: boolean;
     waiting: boolean;
+    isActive: boolean;
     multiplier: number;
     onPlaceBet: () => void;
     onCashOut: () => void;
@@ -22,6 +23,7 @@ export function BetControl({
                                setBetAmount1,
                                placed,
                                waiting,
+                               isActive,
                                multiplier,
                                onPlaceBet,
                                onCashOut,
@@ -36,17 +38,20 @@ export function BetControl({
 
     let buttonContent: ReactNode = "СТАВИТЬ";
     let buttonClass = "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white";
+    let buttonDisabled = false;
+    let buttonOnClick: (() => void) | undefined = onPlaceBet;
 
     if (placed && waiting) {
         buttonContent = "ОЖИДАНИЕ";
         buttonClass = "bg-[#1B1636] text-white";
+        buttonDisabled = true;
+        buttonOnClick = undefined;
     }
+
     if (placed && !waiting) {
         buttonContent = (
             <div className="flex flex-col items-center leading-tight">
-                <span className="text-lg font-bold mb-1 text-white">
-                    {winSum} TON
-                </span>
+                <span className="text-lg font-bold mb-1 text-white">{winSum} TON</span>
                 <span className="text-white">ЗАБРАТЬ</span>
             </div>
         );
@@ -54,7 +59,18 @@ export function BetControl({
         buttonStyle = {
             background: "linear-gradient(137deg, #18CD00 5.88%, #54BA39 46.39%, #067200 92.75%)",
         };
+        buttonDisabled = false;
+        buttonOnClick = onCashOut;
     }
+
+    if (!placed && isActive) {
+        buttonContent = "СТАВКИ ЗАКРЫТЫ";
+        buttonClass = "bg-[#1B1636] text-[#969696]";
+        buttonDisabled = true;
+        buttonOnClick = undefined;
+    }
+
+    const controlsDisabled = placed || (!placed && isActive);
 
     return (
         <div className="flex bg-[#262352] rounded-[20px] p-2">
@@ -65,7 +81,7 @@ export function BetControl({
                         variant="ghost"
                         className="w-8 h-8 p-0 text-[#969696] hover:text-white"
                         onClick={() => setBetAmount1(Math.max(1, betAmount1 - 1))}
-                        disabled={placed}
+                        disabled={controlsDisabled}
                     >
                         <div className="flex justify-center items-center bg-[#241E44] rounded-[10px] w-[35px] h-[35px]">
                             <Minus className="bg-[#241E44] w-4 h-4" />
@@ -74,16 +90,16 @@ export function BetControl({
                     <Input
                         type="number"
                         value={betAmount1}
-                        onChange={event => setBetAmount1(Number(event.target.value))}
+                        onChange={(event) => setBetAmount1(Number(event.target.value))}
                         className="border-none text-white font-bold text-xl min-w-[40px] text-center [appearance:textfield]"
-                        disabled={placed}
+                        disabled={controlsDisabled}
                     />
                     <Button
                         size="sm"
                         variant="ghost"
                         className="w-8 h-8 p-0 text-[#969696] hover:text-white"
                         onClick={() => setBetAmount1(betAmount1 + 1)}
-                        disabled={placed}
+                        disabled={controlsDisabled}
                     >
                         <div className="flex justify-center items-center bg-[#241E44] rounded-[10px] w-[35px] h-[35px]">
                             <Plus className="w-4 h-4" />
@@ -98,7 +114,7 @@ export function BetControl({
                             variant="ghost"
                             className="text-[#969696] hover:text-white bg-[#241E44] rounded-[5px] w-[30px] h-[20px] text-xs"
                             onClick={() => setBetAmount1(amount)}
-                            disabled={placed}
+                            disabled={controlsDisabled}
                         >
                             {amount}
                         </Button>
@@ -107,10 +123,10 @@ export function BetControl({
             </div>
             <div className="w-[100%] py-2 px-1">
                 <Button
-                    onClick={placed ? (waiting ? undefined : onCashOut) : onPlaceBet}
+                    onClick={buttonOnClick}
                     className={`rounded-[20px] font-bold w-[100%] h-[100%] ${buttonClass}`}
                     style={buttonStyle}
-                    disabled={placed && waiting}
+                    disabled={buttonDisabled}
                 >
                     {buttonContent}
                 </Button>

@@ -29,8 +29,8 @@ export function BettingSection({
                                }: BettingSectionProps) {
     const presetAmounts = [1, 5, 10, 20, 50];
     const [activeTab, setActiveTab] = useState("balance");
-
     const waitingGame = gamePhase === "waiting";
+    const isActive = gamePhase !== "waiting";
 
     return (
         <Card className="bg-[#231c46] border-none py-4">
@@ -48,6 +48,7 @@ export function BettingSection({
                             setBetAmount1={(value: number) => setBetAmount(i, value)}
                             placed={bet.placed}
                             waiting={bet.placed && waitingGame}
+                            isActive={isActive}
                             multiplier={currentMultiplier}
                             onPlaceBet={() => placeBet(i)}
                             onCashOut={() => onCashOut(i)}
