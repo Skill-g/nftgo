@@ -22,7 +22,7 @@ export default function Page() {
         if (!user?.initData || !roundId) return;
         const host = getBackendHost();
         if (!host) return;
-        const res = await fetch(`${host}/api/game/${roundId}/bets`, {
+        const res = await fetch(`https://${host}/api/game/${roundId}/bets`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ initData: user.initData, amount: bets[index].amount }),
@@ -46,7 +46,7 @@ export default function Page() {
         if (!betId) return;
         const host = getBackendHost();
         if (!host) return;
-        const res = await fetch(`${host}/api/game/${roundId}/cashout`, {
+        const res = await fetch(`https://${host}/api/game/${roundId}/cashout`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ initData: user.initData, betId }),
