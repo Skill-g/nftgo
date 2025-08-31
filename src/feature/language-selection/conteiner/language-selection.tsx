@@ -16,8 +16,9 @@ export function LanguageSelection() {
         try {
             setSaving(lang);
             await setPreferredLanguage(lang);
-        } catch (e: any) {
-            alert(e.message || "Не удалось изменить язык");
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : "Неизвестная ошибка";
+            alert(message || "Не удалось изменить язык");
         } finally {
             setSaving(null);
         }

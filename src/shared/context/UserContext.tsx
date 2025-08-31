@@ -41,7 +41,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        const tg = (window as any).Telegram?.WebApp;
+        const tg = window.Telegram?.WebApp;
         const initData = tg?.initData || "";
         if (!initData) {
             setLoading(false);
@@ -62,8 +62,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 if (!referralResponse.ok) throw new Error("Failed to fetch referral summary");
                 const referralJson = await referralResponse.json();
                 setReferralData(referralJson);
-            } catch (err) {
-                setError(err as Error);
+            } catch (err: unknown) {
+                if (err instanceof Error) {
+                    setError(err);
+                } else {
+                    setError(new Error("Unknown error"));
+                }
             } finally {
                 setLoading(false);
             }

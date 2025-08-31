@@ -8,6 +8,10 @@ declare global {
                 openTelegramLink: (url: string) => void;
                 shareURL: (url: string, text?: string) => void;
                 openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
+                initDataUnsafe?: Record<string, unknown>;
+                ready?: () => void;
+                close?: () => void;
+                expand?: () => void;
             };
         };
     }
