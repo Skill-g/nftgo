@@ -163,7 +163,7 @@ export function GiftsList({
     return (
         <div className="px-4 pb-24">
             {isLoading && !data ? (
-                <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="grid grid-cols-3 gap-3 mt-4">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="h-40 bg-white/5 rounded-lg animate-pulse" />
                     ))}
@@ -172,7 +172,7 @@ export function GiftsList({
                 <div className="text-center text-red-400 mt-6">Не удалось загрузить подарки</div>
             ) : (
                 <>
-                    <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="grid grid-cols-3 gap-3 mt-4">
                         {items.map((g) => (
                             <GiftCard
                                 key={g.id}

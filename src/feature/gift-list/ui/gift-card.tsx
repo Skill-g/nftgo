@@ -19,11 +19,11 @@ export function GiftCard({
         <button
             onClick={onClick}
             disabled={disabled}
-            className={`relative w-full text-left rounded-[20px] p-3 pl-1 pt-1 w-[130px] h-[130px] transition-all bg-[linear-gradient(214deg,_rgba(97,0,255,0.5)_20.44%,_rgba(179,132,255,0.5)_96.63%)] ${
+            className={`relative w-max text-left rounded-[20px] p-3 pl-1 pt-1 w-[130px] h-[130px] transition-all bg-[linear-gradient(214deg,_rgba(97,0,255,0.5)_20.44%,_rgba(179,132,255,0.5)_96.63%)] ${
                 disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
             }`}
         >
-            <div className="flex bg-[#383838] rounded-[50px] pl-2 pr-2 pt-1 pb-1 text-center w-max items-center gap-1 mb-2 ml-[-14px]">
+            <div className="flex bg-[#383838] rounded-[50px] pl-2 pr-2 pt-1 pb-1 text-center w-max items-center gap-1 mb-2">
                 <span className="text-white text-center text-xs font-semibold">{price.toFixed(3)}</span>
                 <div className="w-4 h-4 rounded-full flex items-center justify-center">
                     <Image src={"/tonCoin.svg"} alt="ton coin" width={18} height={18} />
@@ -31,7 +31,7 @@ export function GiftCard({
             </div>
 
             <div className="relative flex ">
-                <div className="w-full rounded-lg flex items-end justify-center relative overflow-hidden w-[88px] h-[95px]">
+                <div className="w-max rounded-lg flex items-end justify-center relative overflow-hidden w-[88px] h-[95px] mb-[8px]">
                     <img
                         src={imageUrl}
                         alt={title}
