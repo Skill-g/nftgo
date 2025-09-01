@@ -49,45 +49,53 @@ type ToastType = {
     botMessage?: string;
 };
 
-type ApiErrorBase = { error: string; message?: unknown; [k: string]: unknown };
+
+function parseJsonSafe<T = unknown>(text: string): T | null {
+    try {
+        return text ? (JSON.parse(text) as T) : null;
+    } catch {
+        return null;
+    }
+}
 
 function isObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
 
-function str(v: unknown): string | null {
-    return typeof v === "string" ? v : null;
+
+
+function textHasGiftrelayer(t: string): boolean {
+    return /(?:^|[\s"'(])@?giftrelayer(?:$|[\s"'():,.!?/])/i.test(t);
 }
 
-function isUserNotRegistered(v: unknown): v is ApiErrorBase {
-    return isObject(v) && v.error === "USER_NOT_REGISTERED_IN_MARKETPLACE";
+function textHasUserNotRegistered(t: string): boolean {
+    return /USER_NOT_REGISTERED_IN_MARKETPLACE/i.test(t);
 }
 
-function hasGiftRelayerMention(msg: unknown): boolean {
-    const s = str(msg);
-    if (!s) return false;
-    return /@?giftrelayer/i.test(s);
+function isUserNotRegisteredErr(raw: unknown): boolean {
+    if (typeof raw === "string") return textHasUserNotRegistered(raw);
+    if (isObject(raw)) {
+        const err = raw.error;
+        const msg = raw.message;
+        return (
+            err === "USER_NOT_REGISTERED_IN_MARKETPLACE" ||
+            (typeof msg === "string" && textHasUserNotRegistered(msg))
+        );
+    }
+    return false;
 }
 
-function extractGiftRelayerDirective(v: unknown): { username: string; displayTag: string } | null {
-    if (!isObject(v)) return null;
-
-    if (hasGiftRelayerMention(v.message)) {
-        return { username: "giftrelayer", displayTag: "@giftrelayer" };
+function hasGiftRelayerInUnknown(raw: unknown): boolean {
+    if (typeof raw === "string") return textHasGiftrelayer(raw);
+    if (isObject(raw)) {
+        const candidates: unknown[] = [
+            raw.message,
+            isObject(raw.upstream) ? (raw.upstream as Record<string, unknown>).message : undefined,
+            ...Object.values(raw),
+        ];
+        return candidates.some((v) => (typeof v === "string" ? textHasGiftrelayer(v) : false));
     }
-
-    const upstream = v.upstream;
-    if (isObject(upstream) && hasGiftRelayerMention(upstream.message)) {
-        return { username: "giftrelayer", displayTag: "@giftrelayer" };
-    }
-
-    for (const val of Object.values(v)) {
-        if (typeof val === "string" && /(t\.me\/giftrelayer|@?giftrelayer)/i.test(val)) {
-            return { username: "giftrelayer", displayTag: "@giftrelayer" };
-        }
-    }
-
-    return null;
+    return false;
 }
 
 
@@ -181,10 +189,11 @@ export function GiftsList({
                     }),
                 });
 
-                const raw: unknown = await res.json().catch(() => null);
+                const text = await res.text().catch(() => "");
+                const raw: unknown = parseJsonSafe(text);
 
                 if (!res.ok) {
-                    if (isUserNotRegistered(raw)) {
+                    if (isUserNotRegisteredErr(raw) || isUserNotRegisteredErr(text)) {
                         setToast({
                             type: "bot_required",
                             message: "Требуется авторизация в боте",
@@ -195,12 +204,11 @@ export function GiftsList({
                         return;
                     }
 
-                    const relayer = extractGiftRelayerDirective(raw);
-                    if (relayer) {
+                    if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
                         setToast({
                             type: "bot_required",
                             message: "Требуется действие в боте",
-                            botUsername: relayer.username,
+                            botUsername: "giftrelayer",
                             botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
                         });
                         return;
@@ -212,7 +220,7 @@ export function GiftsList({
                     return;
                 }
 
-                if (isUserNotRegistered(raw)) {
+                if (isUserNotRegisteredErr(raw) || isUserNotRegisteredErr(text)) {
                     setToast({
                         type: "bot_required",
                         message: "Требуется авторизация в боте",
@@ -222,26 +230,25 @@ export function GiftsList({
                     });
                     return;
                 }
-                const relayer = extractGiftRelayerDirective(raw);
-                if (relayer) {
+                if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
                     setToast({
                         type: "bot_required",
                         message: "Требуется действие в боте",
-                        botUsername: relayer.username,
+                        botUsername: "giftrelayer",
                         botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
                     });
                     return;
                 }
 
-                const resp = raw as PurchaseResp;
+                const resp = (raw ?? parseJsonSafe<PurchaseResp>(text)) as PurchaseResp | null;
                 const delivered = String(resp?.status ?? "").toLowerCase() === "delivered";
 
                 await refresh();
                 await mutate();
 
                 if (delivered) {
-                    const title = resp.items?.[0]?.title ?? gift.title;
-                    const amount = typeof resp.amount === "number" ? resp.amount : gift.price;
+                    const title = resp?.items?.[0]?.title ?? gift.title;
+                    const amount = typeof resp?.amount === "number" ? resp.amount : gift.price;
                     setToast({
                         type: "success",
                         message: `Успешная покупка: ${title} — ${amount.toFixed(3)} TON`,

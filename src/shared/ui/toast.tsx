@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle, X, Copy, ExternalLink } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "@/shared/ui/button";
 
 type ToastProps = {
     type: "success" | "error" | "bot_required";
