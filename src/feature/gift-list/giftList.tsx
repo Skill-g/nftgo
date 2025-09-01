@@ -1,10 +1,10 @@
 "use client";
 
 import useSWR from "swr";
-import Image from "next/image";
 import {useMemo, useState, useCallback, useEffect} from "react";
 import {Button} from "@/shared/ui/button";
 import {useBalance} from "@/shared/hooks/useBalance";
+import {GiftCard} from "./ui/gift-card";
 
 type Gift = {
     id: number;
@@ -25,7 +25,7 @@ type GiftsResponse = {
 
 type PurchaseResp = {
     orderId: number;
-    status: string;            // ожидается "delivered" при успехе
+    status: string;
     amount: number;
     currency: string;
     quantity: number;
@@ -43,6 +43,16 @@ const fetcher = async (url: string) => {
     if (!res.ok) throw new Error("Failed to load gifts");
     const json = (await res.json()) as GiftsResponse;
     return json;
+};
+
+const normalizeCdnUrl = (u: string) => {
+    if (!u) return u;
+    try {
+        const once = u.includes("%25") ? decodeURIComponent(u) : u;
+        return once.replace(/ /g, "%20");
+    } catch {
+        return u;
+    }
 };
 
 export function GiftsList({
@@ -76,11 +86,9 @@ export function GiftsList({
     }, [initData, offset, limit, sort, activeOnly, search]);
 
     const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`;
-
     const { data, error, isLoading, mutate } = useSWR(url, fetcher, { keepPreviousData: true });
 
     const itemsServer = data?.items ?? [];
-
     const items = useMemo(() => {
         return itemsServer.filter((g) => {
             if (typeof minPrice === "number" && g.price < minPrice) return false;
@@ -96,7 +104,6 @@ export function GiftsList({
 
     const [confirmId, setConfirmId] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
-
     const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
     useEffect(() => {
@@ -111,7 +118,7 @@ export function GiftsList({
         return map;
     }, [itemsServer]);
 
-    const onBuyClick = (id: number) => setConfirmId(id);
+    const openConfirm = (id: number) => setConfirmId(id);
     const closeConfirm = () => setConfirmId(null);
 
     const purchase = useCallback(
@@ -121,28 +128,24 @@ export function GiftsList({
             setBusy(true);
             try {
                 setOptimistic(-gift.price);
-
                 const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts/purchase`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Accept: "application/json" },
                     body: JSON.stringify({ initData, giftId: gift.id }),
                 });
-
                 if (!res.ok) {
                     await refresh();
                     setToast({ type: "error", message: "Покупка не выполнена" });
                     return;
                 }
-
-                const data = (await res.json()) as PurchaseResp;
-                const delivered = String(data?.status ?? "").toLowerCase() === "delivered";
-
+                const resp = (await res.json()) as PurchaseResp;
+                const delivered = String(resp?.status ?? "").toLowerCase() === "delivered";
                 await refresh();
                 await mutate();
-
                 if (delivered) {
-                    const title = data.items?.[0]?.title ?? gift.title;
-                    setToast({ type: "success", message: `Успешная покупка: ${title} — ${data.amount?.toFixed?.(3) ?? gift.price.toFixed(3)} TON` });
+                    const title = resp.items?.[0]?.title ?? gift.title;
+                    const amount = typeof resp.amount === "number" ? resp.amount : gift.price;
+                    setToast({ type: "success", message: `Успешная покупка: ${title} — ${amount.toFixed(3)} TON` });
                 } else {
                     setToast({ type: "error", message: "Покупка не выполнена" });
                 }
@@ -171,24 +174,14 @@ export function GiftsList({
                 <>
                     <div className="grid grid-cols-2 gap-3 mt-4">
                         {items.map((g) => (
-                            <div key={g.id} className="bg-[#231c46] rounded-lg overflow-hidden border border-[#2b2550]">
-                                <div className="relative w-full pt-[100%]">
-                                    <Image src={g.imageKey} alt={g.title} fill className="object-cover" />
-                                </div>
-                                <div className="p-3 flex flex-col gap-2">
-                                    <div className="text-sm font-medium line-clamp-1">{g.title}</div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-[#cbd5e1] text-sm">{g.price.toFixed(3)} TON</div>
-                                        <Button
-                                            disabled={!g.isActive || busy}
-                                            onClick={() => onBuyClick(g.id)}
-                                            className={`h-9 px-3 ${g.isActive ? "bg-gradient-to-r from-[#984eed] to-[#8845f5]" : "bg-gray-600 opacity-60"} text-white rounded-md`}
-                                        >
-                                            Купить
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
+                            <GiftCard
+                                key={g.id}
+                                title={g.title}
+                                price={g.price}
+                                imageUrl={normalizeCdnUrl(g.imageKey)}
+                                disabled={!g.isActive || busy}
+                                onClick={() => openConfirm(g.id)}
+                            />
                         ))}
                     </div>
 
