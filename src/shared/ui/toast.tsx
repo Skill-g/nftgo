@@ -102,18 +102,7 @@ export function Toast({
                                 </Button>
                             </div>
 
-                            {botMessage && (
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-7"
-                                    onClick={() => copyText(botMessage, "text")}
-                                    aria-label="Скопировать текст"
-                                >
-                                    <Copy className="w-3 h-3 mr-1" />
-                                    {copied === "text" ? "Скопировано" : "Скопировать текст"}
-                                </Button>
-                            )}
+
                         </div>
                     )}
                 </div>

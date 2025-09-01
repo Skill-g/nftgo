@@ -266,8 +266,8 @@ export function GiftsList({
     );
 
     return (
-        <div className="px-4 pb-24">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="px-4 pb-24 mt-[20px]">
+            <div className="grid grid-cols-1 grid-cols-3 gap-4">
                 {items.map((gift: Gift) => (
                     <GiftCard
                         key={gift.id}
