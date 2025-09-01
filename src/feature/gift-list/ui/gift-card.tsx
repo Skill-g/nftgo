@@ -19,7 +19,7 @@ export function GiftCard({
         <button
             onClick={onClick}
             disabled={disabled}
-            className={`relative w-max text-left rounded-[20px] p-3 pl-1 pt-1 w-[130px] h-[130px] transition-all bg-[linear-gradient(214deg,_rgba(97,0,255,0.5)_20.44%,_rgba(179,132,255,0.5)_96.63%)] ${
+            className={`relative w-auto text-left rounded-[20px] pl-1 pt-1 w-[130px] h-[130px] transition-all bg-[linear-gradient(214deg,_rgba(97,0,255,0.5)_20.44%,_rgba(179,132,255,0.5)_96.63%)] ${
                 disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
             }`}
         >
@@ -38,7 +38,7 @@ export function GiftCard({
                         loading="lazy"
                         className="w-[88px] h-[95px] object-contain select-none pointer-events-none"
                     />
-                    <div className="px-1 pb-1 bg-[#0098EA] rounded-[6px] flex p-[3px] items-end gap-[10px] h-max">
+                    <div className="px-1 pb-1 bg-[#0098EA] rounded-[6px] flex p-[3px] items-end gap-[10px] h-max mb-[8px]">
                         <Image src={"/shopping-cart.svg"} alt="ton coin" width={18} height={18} />
                     </div>
                 </div>
