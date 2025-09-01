@@ -194,7 +194,7 @@ export function GiftsList({
                             type: "bot_required",
                             message: "Требуется авторизация в боте",
                             botUsername: "Tonnel_Network_bot",
-                            botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка. Нажмите на @Tonnel_Network_bot для перехода.",
+                            botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка.",
                         });
                         return;
                     }
@@ -204,7 +204,7 @@ export function GiftsList({
                             type: "bot_required",
                             message: "Требуется действие в боте",
                             botUsername: "giftrelayer",
-                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок. Нажмите на @giftrelayer для перехода.",
+                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок. ",
                         });
                         return;
                     }
@@ -220,7 +220,7 @@ export function GiftsList({
                         type: "bot_required",
                         message: "Требуется авторизация в боте",
                         botUsername: "Tonnel_Network_bot",
-                        botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка. Нажмите на @Tonnel_Network_bot для перехода.",
+                        botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка.",
                     });
                     return;
                 }
@@ -229,7 +229,7 @@ export function GiftsList({
                         type: "bot_required",
                         message: "Требуется действие в боте",
                         botUsername: "giftrelayer",
-                        botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок. Нажмите на @giftrelayer для перехода.",
+                        botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок.",
                     });
                     return;
                 }
@@ -265,7 +265,7 @@ export function GiftsList({
 
     return (
         <div className="px-4 pb-24 mt-[20px]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                 {items.map((gift: Gift) => (
                     <GiftCard
                         key={gift.id}

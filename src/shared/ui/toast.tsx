@@ -58,7 +58,7 @@ export function Toast({
 
     return (
         <div
-            className={`fixed bottom-4 right-4 z-[9999] max-w-sm w-full p-4 rounded-lg shadow-lg text-white ${baseBg}`}
+            className={`fixed bottom-4 right-4 z-[9999] w-[calc(100vw-2rem)] sm:w-auto max-w-[calc(100vw-2rem)] sm:max-w-sm p-4 rounded-lg shadow-lg text-white ${baseBg}`}
             role="status"
             aria-live="polite"
         >
@@ -72,15 +72,21 @@ export function Toast({
                 </div>
 
                 <div className="flex-1">
-                    <p className="font-medium leading-snug text-white">{message}</p>
-
-                    {botMessage && <p className="text-sm leading-snug mt-1 text-white/90">{botMessage}</p>}
+                    <p className="font-medium leading-snug text-white break-words whitespace-pre-wrap">
+                        {message}
+                    </p>
 
                     {!!tag && (
                         <div className="mt-2 bg-black/20 p-2 rounded">
+                            {botMessage && (
+                                <p className="text-sm leading-snug text-white/90 break-words whitespace-pre-wrap">
+                                    {botMessage}
+                                </p>
+                            )}
+
                             <button
                                 onClick={handleOpenBot}
-                                className="font-semibold text-[#21ee43] hover:underline underline-offset-2"
+                                className="mt-2 font-semibold text-[#21ee43] hover:underline underline-offset-2 break-words"
                                 title={`Открыть ${tag} в Telegram`}
                             >
                                 {tag}
