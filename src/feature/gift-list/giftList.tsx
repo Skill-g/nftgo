@@ -1,0 +1,257 @@
+"use client";
+
+import useSWR from "swr";
+import Image from "next/image";
+import {useMemo, useState, useCallback, useEffect} from "react";
+import {Button} from "@/shared/ui/button";
+import {useBalance} from "@/shared/hooks/useBalance";
+
+type Gift = {
+    id: number;
+    title: string;
+    imageKey: string;
+    price: number;
+    currency: "TON" | string;
+    isActive: boolean;
+};
+
+type GiftsResponse = {
+    items: Gift[];
+    total: number;
+    offset: number;
+    limit: number;
+    meta?: { stale?: boolean; cacheAt?: string };
+};
+
+type PurchaseResp = {
+    orderId: number;
+    status: string;            // ожидается "delivered" при успехе
+    amount: number;
+    currency: string;
+    quantity: number;
+    items: { id: number; code: string; giftId: number; title: string; imageKey: string; acquiredAt: string }[];
+};
+
+const buildQuery = (p: Record<string, string | number | boolean | undefined>) =>
+    Object.entries(p)
+        .filter(([, v]) => v !== undefined && v !== "" && v !== null)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+        .join("&");
+
+const fetcher = async (url: string) => {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("Failed to load gifts");
+    const json = (await res.json()) as GiftsResponse;
+    return json;
+};
+
+export function GiftsList({
+                              initData,
+                              search,
+                              minPrice,
+                              maxPrice,
+                              activeOnly,
+                              sort,
+                          }: {
+    initData: string;
+    search: string;
+    minPrice: number | null;
+    maxPrice: number | null;
+    activeOnly: boolean;
+    sort: "newest";
+}) {
+    const [offset, setOffset] = useState(0);
+    const limit = 20;
+
+    const qs = useMemo(() => {
+        const base: Record<string, string | number | boolean | undefined> = {
+            initData,
+            offset,
+            limit,
+            sort,
+            activeOnly,
+            search: search || undefined,
+        };
+        return buildQuery(base);
+    }, [initData, offset, limit, sort, activeOnly, search]);
+
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`;
+
+    const { data, error, isLoading, mutate } = useSWR(url, fetcher, { keepPreviousData: true });
+
+    const itemsServer = data?.items ?? [];
+
+    const items = useMemo(() => {
+        return itemsServer.filter((g) => {
+            if (typeof minPrice === "number" && g.price < minPrice) return false;
+            if (typeof maxPrice === "number" && g.price > maxPrice) return false;
+            return true;
+        });
+    }, [itemsServer, minPrice, maxPrice]);
+
+    const total = data?.total ?? 0;
+    const hasMore = offset + limit < total;
+
+    const { setOptimistic, refresh } = useBalance(initData);
+
+    const [confirmId, setConfirmId] = useState<number | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+    useEffect(() => {
+        if (!toast) return;
+        const id = setTimeout(() => setToast(null), 3000);
+        return () => clearTimeout(id);
+    }, [toast]);
+
+    const giftById = useMemo(() => {
+        const map = new Map<number, Gift>();
+        for (const g of itemsServer) map.set(g.id, g);
+        return map;
+    }, [itemsServer]);
+
+    const onBuyClick = (id: number) => setConfirmId(id);
+    const closeConfirm = () => setConfirmId(null);
+
+    const purchase = useCallback(
+        async (id: number) => {
+            const gift = giftById.get(id);
+            if (!gift || !initData || busy) return;
+            setBusy(true);
+            try {
+                setOptimistic(-gift.price);
+
+                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts/purchase`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Accept: "application/json" },
+                    body: JSON.stringify({ initData, giftId: gift.id }),
+                });
+
+                if (!res.ok) {
+                    await refresh();
+                    setToast({ type: "error", message: "Покупка не выполнена" });
+                    return;
+                }
+
+                const data = (await res.json()) as PurchaseResp;
+                const delivered = String(data?.status ?? "").toLowerCase() === "delivered";
+
+                await refresh();
+                await mutate();
+
+                if (delivered) {
+                    const title = data.items?.[0]?.title ?? gift.title;
+                    setToast({ type: "success", message: `Успешная покупка: ${title} — ${data.amount?.toFixed?.(3) ?? gift.price.toFixed(3)} TON` });
+                } else {
+                    setToast({ type: "error", message: "Покупка не выполнена" });
+                }
+            } catch {
+                await refresh();
+                setToast({ type: "error", message: "Покупка не выполнена" });
+            } finally {
+                setBusy(false);
+                closeConfirm();
+            }
+        },
+        [giftById, initData, mutate, refresh, setOptimistic, busy]
+    );
+
+    return (
+        <div className="px-4 pb-24">
+            {isLoading && !data ? (
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-40 bg-white/5 rounded-lg animate-pulse" />
+                    ))}
+                </div>
+            ) : error ? (
+                <div className="text-center text-red-400 mt-6">Не удалось загрузить подарки</div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                        {items.map((g) => (
+                            <div key={g.id} className="bg-[#231c46] rounded-lg overflow-hidden border border-[#2b2550]">
+                                <div className="relative w-full pt-[100%]">
+                                    <Image src={g.imageKey} alt={g.title} fill className="object-cover" />
+                                </div>
+                                <div className="p-3 flex flex-col gap-2">
+                                    <div className="text-sm font-medium line-clamp-1">{g.title}</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[#cbd5e1] text-sm">{g.price.toFixed(3)} TON</div>
+                                        <Button
+                                            disabled={!g.isActive || busy}
+                                            onClick={() => onBuyClick(g.id)}
+                                            className={`h-9 px-3 ${g.isActive ? "bg-gradient-to-r from-[#984eed] to-[#8845f5]" : "bg-gray-600 opacity-60"} text-white rounded-md`}
+                                        >
+                                            Купить
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {hasMore && (
+                        <div className="flex justify-center">
+                            <Button
+                                onClick={() => setOffset((o) => o + limit)}
+                                className="mt-4 bg-white/10 hover:bg-white/15 text-white"
+                            >
+                                Загрузить ещё
+                            </Button>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {confirmId !== null && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={closeConfirm}>
+                    <div className="w-full max-w-sm bg-[#241e44] rounded-2xl border border-[#2b2550] p-5" onClick={(e) => e.stopPropagation()}>
+                        <div className="text-center text-white text-lg font-semibold mb-2">Подтверждение</div>
+                        <div className="text-center text-white/80 mb-5">Вы уверены что хотите приобрести этот товар?</div>
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={closeConfirm}
+                                className="flex-1 h-11 bg-[#3b2d66] hover:bg-[#45307a] text-white rounded-lg"
+                                disabled={busy}
+                            >
+                                Нет
+                            </Button>
+                            <Button
+                                onClick={() => purchase(confirmId)}
+                                className="flex-1 h-11 bg-gradient-to-r from-[#18CD00] to-[#067200] text-white rounded-lg"
+                                disabled={busy}
+                            >
+                                Да
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {toast && (
+                <div className="fixed left-1/2 -translate-x-1/2 bottom-4 z-50">
+                    <div
+                        className={`px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+                            toast.type === "success"
+                                ? "bg-emerald-600/90 text-white ring-1 ring-emerald-400/40"
+                                : "bg-rose-600/90 text-white ring-1 ring-rose-400/40"
+                        }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <span>{toast.message}</span>
+                            <button
+                                className="ml-2 text-white/80 hover:text-white"
+                                onClick={() => setToast(null)}
+                                aria-label="Закрыть уведомление"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

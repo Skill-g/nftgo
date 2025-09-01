@@ -1,51 +1,50 @@
-"use client"
+"use client";
 
 import Image from "next/image";
 import {Input} from "@/shared/ui/input";
 import {useEffect, useState} from "react";
 
-export function FilterBar({min, max, type, onValueChange}: {min: number, max: number, onValueChange?: (value: number) => void, type: "min" | "max";}) {
+export function FilterBar({
+                              min,
+                              max,
+                              type,
+                              onValueChange,
+                              value: controlledValue,
+                          }: {
+    min: number;
+    max: number;
+    type: "min" | "max";
+    onValueChange?: (value: number | null) => void;
+    value?: number | null;
+}) {
+    const [value, setValue] = useState<string>(controlledValue != null ? String(controlledValue) : "");
 
-    const [value, setValue] = useState<string>("");
+    useEffect(() => {
+        if (controlledValue === undefined) return;
+        setValue(controlledValue == null ? "" : String(controlledValue));
+    }, [controlledValue]);
 
     useEffect(() => {
         if (value === "") {
+            onValueChange?.(null);
             return;
         }
-
-        let newValue = Number(value);
-        if (isNaN(newValue)) {
-            newValue = type === "min" ? min : max;
-            setValue(newValue.toString());
-        } else if (newValue < min) {
-            newValue = min;
-            setValue(newValue.toString());
-        } else if (newValue > max) {
-            newValue = max;
-            setValue(newValue.toString());
+        let next = Number(value);
+        if (Number.isNaN(next)) {
+            next = type === "min" ? min : max;
+            setValue(String(next));
+        } else if (next < min) {
+            next = min;
+            setValue(String(next));
+        } else if (next > max) {
+            next = max;
+            setValue(String(next));
         }
-        if (onValueChange && !isNaN(newValue)) {
-            onValueChange(newValue);
-        }
-    }, [min, max, type, onValueChange, value]);
+        onValueChange?.(Number.isFinite(next) ? next : null);
+    }, [min, max, type, value, onValueChange]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const inputValue = e.target.value;
-        let newValue: string = inputValue;
-
-        if (inputValue !== "" && !isNaN(Number(inputValue))) {
-            const numValue = Number(inputValue);
-            if (numValue < min) {
-                newValue = min.toString();
-            } else if (numValue > max) {
-                newValue = max.toString();
-            }
-        }
-
-        setValue(newValue);
-        if (onValueChange && !isNaN(Number(newValue))) {
-            onValueChange(Number(newValue));
-        }
+        setValue(e.target.value);
     };
 
     const placeholderText = type === "min" ? "min price" : "max price";
@@ -67,5 +66,5 @@ export function FilterBar({min, max, type, onValueChange}: {min: number, max: nu
                 </div>
             </div>
         </div>
-    )
+    );
 }

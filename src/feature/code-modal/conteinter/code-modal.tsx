@@ -6,12 +6,27 @@ import {X} from "lucide-react"
 import {useMemo, useState} from "react"
 import Image from "next/image"
 import {useUserContext} from "@/shared/context/UserContext"
+import { useBalance } from "@/shared/hooks/useBalance"
 
 type Status = "idle" | "valid" | "invalid"
+
+type PromoRedeemResponse = {
+    balance?: number | string
+    amount?: number | string
+    reward?: number | string
+    userBalance?: number | string
+}
+
+const toNumber = (v: unknown): number | null => {
+    if (typeof v === "number") return v
+    if (typeof v === "string" && Number.isFinite(Number(v))) return Number(v)
+    return null
+}
 
 export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: boolean, setShowPromoModal: (value: boolean) => void}) {
     const { user } = useUserContext()
     const initData = useMemo(() => user?.initData ?? "", [user])
+    const { setOptimistic, refresh } = useBalance(initData)
 
     const [promoCode, setPromoCode] = useState("")
     const [submitting, setSubmitting] = useState(false)
@@ -44,7 +59,30 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
                 setStatus("invalid")
                 return
             }
+
+            let rewardDelta: number | null = null
+            try {
+                const dataUnknown: unknown = await res.json()
+                const data = dataUnknown as PromoRedeemResponse
+                rewardDelta =
+                    toNumber(data.reward) ??
+                    toNumber(data.amount) ??
+                    null
+                const directBalance = toNumber(data.balance ?? data.userBalance)
+                if (rewardDelta !== null) {
+                    setOptimistic(rewardDelta)
+                }
+                if (directBalance !== null) {
+                    await refresh()
+                } else {
+                    await refresh()
+                }
+            } catch {
+                await refresh()
+            }
+
             setStatus("valid")
+            setShowPromoModal(false)
         } catch {
             setStatus("invalid")
         } finally {

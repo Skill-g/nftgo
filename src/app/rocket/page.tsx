@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Multipliers } from "@/shared/ui/multipliers";
 import { NewsBanner } from "@/shared/ui/news-banner";
 import { GameArea } from "@/shared/ui/gameArea/game-area";
@@ -8,11 +8,15 @@ import { BettingSection } from "@/feature/betting-section";
 import { PlayersList } from "@/feature/players-list";
 import { useUserContext } from "@/shared/context/UserContext";
 import { getBackendHost } from "@/shared/lib/host";
+import { useBalance } from "@/shared/hooks/useBalance";
 
 type Bet = { amount: number; placed: boolean; betId?: number | null };
 
 export default function Page() {
     const { user } = useUserContext();
+    const initData = useMemo(() => user?.initData ?? "", [user]);
+    const { setOptimistic, refresh } = useBalance(initData);
+
     const [bets, setBets] = useState<Bet[]>([
         { amount: 20, placed: false, betId: null },
         { amount: 20, placed: false, betId: null },
@@ -26,16 +30,31 @@ export default function Page() {
             if (!user?.initData || !roundId) return;
             const host = getBackendHost();
             if (!host) return;
-            const res = await fetch(`https://${host}/api/game/${roundId}/bets`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData, amount: bets[index].amount }),
-            });
-            if (!res.ok) return;
-            const json: { betId: number; roundId: number; status: string; userBalance: number } = await res.json();
-            setBets((prev) => prev.map((b, i) => (i === index ? { ...b, placed: true, betId: json.betId } : b)));
+
+            const amount = bets[index].amount;
+
+            setOptimistic(-amount);
+
+            try {
+                const res = await fetch(`https://${host}/api/game/${roundId}/bets`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ initData: user.initData, amount }),
+                });
+                if (!res.ok) {
+                    await refresh();
+                    return;
+                }
+                const json: { betId: number; roundId: number; status: string; userBalance?: number } = await res.json();
+
+                setBets((prev) => prev.map((b, i) => (i === index ? { ...b, placed: true, betId: json.betId } : b)));
+
+                await refresh();
+            } catch {
+                await refresh();
+            }
         },
-        [user?.initData, roundId, bets]
+        [user?.initData, roundId, bets, setOptimistic, refresh]
     );
 
     const resetBets = useCallback(() => {
@@ -53,16 +72,21 @@ export default function Page() {
             if (!betId) return;
             const host = getBackendHost();
             if (!host) return;
-            const res = await fetch(`https://${host}/api/game/${roundId}/cashout`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData, betId }),
-            });
-            if (!res.ok) return;
-            await res.json();
-            setBets((prev) => prev.map((b, i) => (i === index ? { ...b, placed: false, betId: null } : b)));
+            try {
+                const res = await fetch(`https://${host}/api/game/${roundId}/cashout`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ initData: user.initData, betId }),
+                });
+                if (!res.ok) return;
+                await res.json();
+                setBets((prev) => prev.map((b, i) => (i === index ? { ...b, placed: false, betId: null } : b)));
+                await refresh();
+            } catch {
+                await refresh();
+            }
         },
-        [user?.initData, roundId, bets]
+        [user?.initData, roundId, bets, refresh]
     );
 
     return (

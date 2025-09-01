@@ -1,0 +1,1 @@
+export { GiftsList } from "./giftList";
