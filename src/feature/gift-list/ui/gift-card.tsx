@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import {ShoppingCart} from "lucide-react";
 
 export function GiftCard({
                              title,
@@ -31,7 +30,7 @@ export function GiftCard({
                 </div>
             </div>
 
-            <div className="relative mb-2">
+            <div className="relative flex ">
                 <div className="w-full rounded-lg flex items-end justify-center relative overflow-hidden w-[88px] h-[95px]">
                     <img
                         src={imageUrl}
@@ -39,7 +38,7 @@ export function GiftCard({
                         loading="lazy"
                         className="w-[88px] h-[95px] object-contain select-none pointer-events-none"
                     />
-                    <div className="px-1 pb-1 bg-[#0098EA] rounded-[6px] flex p-[3px] items-end gap-[10px]">
+                    <div className="px-1 pb-1 bg-[#0098EA] rounded-[6px] flex p-[3px] items-end gap-[10px] h-max">
                         <Image src={"/shopping-cart.svg"} alt="ton coin" width={18} height={18} />
                     </div>
                 </div>
