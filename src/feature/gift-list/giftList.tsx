@@ -56,20 +56,24 @@ function parseJsonSafe<T = unknown>(text: string): T | null {
         return null;
     }
 }
+
 function isObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
+
 function textHasGiftrelayer(t: string): boolean {
     return /(?:^|[\s"'(])@?giftrelayer(?:$|[\s"'():,.!?/])/i.test(t);
 }
+
 function textHasUserNotRegistered(t: string): boolean {
     return /USER_NOT_REGISTERED_IN_MARKETPLACE/i.test(t);
 }
+
 function isUserNotRegisteredErr(raw: unknown): boolean {
     if (typeof raw === "string") return textHasUserNotRegistered(raw);
     if (isObject(raw)) {
-        const err = (raw as Record<string, unknown>).error;
-        const msg = (raw as Record<string, unknown>).message;
+        const err = raw.error;
+        const msg = raw.message;
         return (
             err === "USER_NOT_REGISTERED_IN_MARKETPLACE" ||
             (typeof msg === "string" && textHasUserNotRegistered(msg))
@@ -77,15 +81,14 @@ function isUserNotRegisteredErr(raw: unknown): boolean {
     }
     return false;
 }
+
 function hasGiftRelayerInUnknown(raw: unknown): boolean {
     if (typeof raw === "string") return textHasGiftrelayer(raw);
     if (isObject(raw)) {
         const candidates: unknown[] = [
-            (raw as Record<string, unknown>).message,
-            isObject((raw as Record<string, unknown>).upstream)
-                ? ((raw as Record<string, unknown>).upstream as Record<string, unknown>).message
-                : undefined,
-            ...Object.values(raw as Record<string, unknown>),
+            raw.message,
+            isObject(raw.upstream) ? (raw.upstream as Record<string, unknown>).message : undefined,
+            ...Object.values(raw),
         ];
         return candidates.some((v) => (typeof v === "string" ? textHasGiftrelayer(v) : false));
     }
@@ -191,20 +194,21 @@ export function GiftsList({
                             type: "bot_required",
                             message: "Требуется авторизация в боте",
                             botUsername: "Tonnel_Network_bot",
-                            botMessage:
-                                "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка",
+                            botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка. Нажмите на @Tonnel_Network_bot для перехода.",
                         });
                         return;
                     }
+
                     if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
                         setToast({
                             type: "bot_required",
                             message: "Требуется действие в боте",
                             botUsername: "giftrelayer",
-                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
+                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок. Нажмите на @giftrelayer для перехода.",
                         });
                         return;
                     }
+
                     clearIdempotencyKey(gift.id);
                     await refresh();
                     setToast({ type: "error", message: "Покупка не выполнена" });
@@ -216,8 +220,7 @@ export function GiftsList({
                         type: "bot_required",
                         message: "Требуется авторизация в боте",
                         botUsername: "Tonnel_Network_bot",
-                        botMessage:
-                            "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка",
+                        botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка. Нажмите на @Tonnel_Network_bot для перехода.",
                     });
                     return;
                 }
@@ -226,7 +229,7 @@ export function GiftsList({
                         type: "bot_required",
                         message: "Требуется действие в боте",
                         botUsername: "giftrelayer",
-                        botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
+                        botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок. Нажмите на @giftrelayer для перехода.",
                     });
                     return;
                 }
@@ -250,6 +253,7 @@ export function GiftsList({
                     clearIdempotencyKey(gift.id);
                 }
             } catch (error: unknown) {
+                console.error("Purchase error:", error);
                 await refresh();
                 setToast({ type: "error", message: "Произошла ошибка при покупке" });
             } finally {
@@ -260,8 +264,8 @@ export function GiftsList({
     );
 
     return (
-        <div className="px-4 pb-24 mt-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="px-4 pb-24 mt-[20px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map((gift: Gift) => (
                     <GiftCard
                         key={gift.id}
