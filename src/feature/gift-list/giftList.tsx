@@ -56,24 +56,20 @@ function parseJsonSafe<T = unknown>(text: string): T | null {
         return null;
     }
 }
-
 function isObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
-
 function textHasGiftrelayer(t: string): boolean {
     return /(?:^|[\s"'(])@?giftrelayer(?:$|[\s"'():,.!?/])/i.test(t);
 }
-
 function textHasUserNotRegistered(t: string): boolean {
     return /USER_NOT_REGISTERED_IN_MARKETPLACE/i.test(t);
 }
-
 function isUserNotRegisteredErr(raw: unknown): boolean {
     if (typeof raw === "string") return textHasUserNotRegistered(raw);
     if (isObject(raw)) {
-        const err = raw.error;
-        const msg = raw.message;
+        const err = (raw as Record<string, unknown>).error;
+        const msg = (raw as Record<string, unknown>).message;
         return (
             err === "USER_NOT_REGISTERED_IN_MARKETPLACE" ||
             (typeof msg === "string" && textHasUserNotRegistered(msg))
@@ -81,14 +77,15 @@ function isUserNotRegisteredErr(raw: unknown): boolean {
     }
     return false;
 }
-
 function hasGiftRelayerInUnknown(raw: unknown): boolean {
     if (typeof raw === "string") return textHasGiftrelayer(raw);
     if (isObject(raw)) {
         const candidates: unknown[] = [
-            raw.message,
-            isObject(raw.upstream) ? (raw.upstream as Record<string, unknown>).message : undefined,
-            ...Object.values(raw),
+            (raw as Record<string, unknown>).message,
+            isObject((raw as Record<string, unknown>).upstream)
+                ? ((raw as Record<string, unknown>).upstream as Record<string, unknown>).message
+                : undefined,
+            ...Object.values(raw as Record<string, unknown>),
         ];
         return candidates.some((v) => (typeof v === "string" ? textHasGiftrelayer(v) : false));
     }
@@ -199,7 +196,6 @@ export function GiftsList({
                         });
                         return;
                     }
-
                     if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
                         setToast({
                             type: "bot_required",
@@ -209,7 +205,6 @@ export function GiftsList({
                         });
                         return;
                     }
-
                     clearIdempotencyKey(gift.id);
                     await refresh();
                     setToast({ type: "error", message: "Покупка не выполнена" });
@@ -255,7 +250,6 @@ export function GiftsList({
                     clearIdempotencyKey(gift.id);
                 }
             } catch (error: unknown) {
-                console.error("Purchase error:", error);
                 await refresh();
                 setToast({ type: "error", message: "Произошла ошибка при покупке" });
             } finally {
@@ -266,8 +260,8 @@ export function GiftsList({
     );
 
     return (
-        <div className="px-4 pb-24 mt-[20px]">
-            <div className="grid grid-cols-1 grid-cols-3 gap-4">
+        <div className="px-4 pb-24 mt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {items.map((gift: Gift) => (
                     <GiftCard
                         key={gift.id}
