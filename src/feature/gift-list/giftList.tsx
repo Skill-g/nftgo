@@ -49,33 +49,47 @@ type ToastType = {
     botMessage?: string;
 };
 
-type ApiErrorBase = { error: string; message?: string; [k: string]: unknown };
-type Upstream = { status?: string; message?: string };
+type ApiErrorBase = { error: string; message?: unknown; [k: string]: unknown };
 
 function isObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
 
+function str(v: unknown): string | null {
+    return typeof v === "string" ? v : null;
+}
+
 function isUserNotRegistered(v: unknown): v is ApiErrorBase {
-    if (!isObject(v)) return false;
-    return typeof v.error === "string" && v.error === "USER_NOT_REGISTERED_IN_MARKETPLACE";
+    return isObject(v) && v.error === "USER_NOT_REGISTERED_IN_MARKETPLACE";
 }
 
-function isFailedUpstreamGiftRelayer(v: unknown): v is ApiErrorBase & { upstream?: Upstream } {
-    if (!isObject(v)) return false;
-    const err = v.error;
-    const msg = v.message;
+function hasGiftRelayerMention(msg: unknown): boolean {
+    const s = str(msg);
+    if (!s) return false;
+    return /@?giftrelayer/i.test(s);
+}
+
+function extractGiftRelayerDirective(v: unknown): { username: string; displayTag: string } | null {
+    if (!isObject(v)) return null;
+
+    if (hasGiftRelayerMention(v.message)) {
+        return { username: "giftrelayer", displayTag: "@giftrelayer" };
+    }
+
     const upstream = v.upstream;
+    if (isObject(upstream) && hasGiftRelayerMention(upstream.message)) {
+        return { username: "giftrelayer", displayTag: "@giftrelayer" };
+    }
 
-    const hasGiftRelayer = (m: unknown) => typeof m === "string" && /@giftrelayer/i.test(m);
+    for (const val of Object.values(v)) {
+        if (typeof val === "string" && /(t\.me\/giftrelayer|@?giftrelayer)/i.test(val)) {
+            return { username: "giftrelayer", displayTag: "@giftrelayer" };
+        }
+    }
 
-    return (
-        typeof err === "string" &&
-        err === "FAILED_UPSTREAM" &&
-        (hasGiftRelayer(msg) ||
-            (isObject(upstream) && hasGiftRelayer(upstream.message)))
-    );
+    return null;
 }
+
 
 export function GiftsList({
                               initData,
@@ -108,7 +122,9 @@ export function GiftsList({
     }, [initData, offset, limit, sort, activeOnly, search]);
 
     const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`;
-    const { data, isLoading, mutate } = useSWR<GiftsResponse>(url, fetcher, { keepPreviousData: true });
+    const { data, isLoading, mutate } = useSWR<GiftsResponse>(url, fetcher, {
+        keepPreviousData: true,
+    });
 
     const itemsServer = data?.items ?? [];
     const items = useMemo(() => {
@@ -165,9 +181,9 @@ export function GiftsList({
                     }),
                 });
 
-                if (!res.ok) {
-                    const raw = (await res.json().catch(() => null)) as unknown;
+                const raw: unknown = await res.json().catch(() => null);
 
+                if (!res.ok) {
                     if (isUserNotRegistered(raw)) {
                         setToast({
                             type: "bot_required",
@@ -179,13 +195,13 @@ export function GiftsList({
                         return;
                     }
 
-                    if (isFailedUpstreamGiftRelayer(raw)) {
+                    const relayer = extractGiftRelayerDirective(raw);
+                    if (relayer) {
                         setToast({
                             type: "bot_required",
                             message: "Требуется действие в боте",
-                            botUsername: "giftrelayer",
-                            botMessage:
-                                "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
+                            botUsername: relayer.username,
+                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
                         });
                         return;
                     }
@@ -196,7 +212,28 @@ export function GiftsList({
                     return;
                 }
 
-                const resp = (await res.json()) as PurchaseResp;
+                if (isUserNotRegistered(raw)) {
+                    setToast({
+                        type: "bot_required",
+                        message: "Требуется авторизация в боте",
+                        botUsername: "Tonnel_Network_bot",
+                        botMessage:
+                            "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка",
+                    });
+                    return;
+                }
+                const relayer = extractGiftRelayerDirective(raw);
+                if (relayer) {
+                    setToast({
+                        type: "bot_required",
+                        message: "Требуется действие в боте",
+                        botUsername: relayer.username,
+                        botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
+                    });
+                    return;
+                }
+
+                const resp = raw as PurchaseResp;
                 const delivered = String(resp?.status ?? "").toLowerCase() === "delivered";
 
                 await refresh();
