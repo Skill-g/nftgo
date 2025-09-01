@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import {useMemo, useState, useCallback, useEffect} from "react";
+import {useMemo, useState, useCallback, useEffect, useRef} from "react";
 import {Button} from "@/shared/ui/button";
 import {useBalance} from "@/shared/hooks/useBalance";
 import {GiftCard} from "./ui/gift-card";
@@ -31,6 +31,11 @@ type PurchaseResp = {
     quantity: number;
     items: { id: number; code: string; giftId: number; title: string; imageKey: string; acquiredAt: string }[];
 };
+
+const genIdempotencyKey = () =>
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `idemp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
 const buildQuery = (p: Record<string, string | number | boolean | undefined>) =>
     Object.entries(p)
@@ -121,35 +126,65 @@ export function GiftsList({
     const openConfirm = (id: number) => setConfirmId(id);
     const closeConfirm = () => setConfirmId(null);
 
+    const idempMapRef = useRef<Map<number, string>>(new Map());
+
+    const getIdempotencyKey = (giftId: number) => {
+        const ex = idempMapRef.current.get(giftId);
+        if (ex) return ex;
+        const fresh = genIdempotencyKey();
+        idempMapRef.current.set(giftId, fresh);
+        return fresh;
+    };
+
+    const clearIdempotencyKey = (giftId: number) => {
+        idempMapRef.current.delete(giftId);
+    };
+
     const purchase = useCallback(
         async (id: number) => {
             const gift = giftById.get(id);
             if (!gift || !initData || busy) return;
+
             setBusy(true);
+            const idempotencyKey = getIdempotencyKey(gift.id);
+
             try {
                 setOptimistic(-gift.price);
+
                 const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts/purchase`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({ initData, giftId: gift.id }),
+                    body: JSON.stringify({
+                        initData,
+                        giftId: gift.id,
+                        idempotencyKey,
+                    }),
                 });
+
                 if (!res.ok) {
+                    clearIdempotencyKey(gift.id);
                     await refresh();
                     setToast({ type: "error", message: "Покупка не выполнена" });
                     return;
                 }
+
                 const resp = (await res.json()) as PurchaseResp;
                 const delivered = String(resp?.status ?? "").toLowerCase() === "delivered";
+
                 await refresh();
                 await mutate();
+
                 if (delivered) {
                     const title = resp.items?.[0]?.title ?? gift.title;
                     const amount = typeof resp.amount === "number" ? resp.amount : gift.price;
                     setToast({ type: "success", message: `Успешная покупка: ${title} — ${amount.toFixed(3)} TON` });
+                    clearIdempotencyKey(gift.id);
                 } else {
                     setToast({ type: "error", message: "Покупка не выполнена" });
+                    clearIdempotencyKey(gift.id);
                 }
             } catch {
+
                 await refresh();
                 setToast({ type: "error", message: "Покупка не выполнена" });
             } finally {
@@ -199,10 +234,18 @@ export function GiftsList({
             )}
 
             {confirmId !== null && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={closeConfirm}>
-                    <div className="w-full max-w-sm bg-[#241e44] rounded-2xl border border-[#2b2550] p-5" onClick={(e) => e.stopPropagation()}>
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+                    onClick={closeConfirm}
+                >
+                    <div
+                        className="w-full max-w-sm bg-[#241e44] rounded-2xl border border-[#2b2550] p-5"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="text-center text-white text-lg font-semibold mb-2">Подтверждение</div>
-                        <div className="text-center text-white/80 mb-5">Вы уверены что хотите приобрести этот товар?</div>
+                        <div className="text-center text-white/80 mb-5">
+                            Вы уверены что хотите приобрести этот товар?
+                        </div>
                         <div className="flex gap-3">
                             <Button
                                 onClick={closeConfirm}
