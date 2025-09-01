@@ -20,7 +20,7 @@ export function GiftCard({
         <button
             onClick={onClick}
             disabled={disabled}
-            className={`relative w-full text-left bg-gradient-to-br rounded-[20px] from-[#8845f5] to-[#533189] p-3 pl-1 pt-1 transition-all ${
+            className={`relative w-full text-left rounded-[20px] p-3 pl-1 pt-1 w-[130px] h-[130px] transition-all bg-[linear-gradient(214deg,_rgba(97,0,255,0.5)_20.44%,_rgba(179,132,255,0.5)_96.63%)] ${
                 disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
             }`}
         >
@@ -32,7 +32,7 @@ export function GiftCard({
             </div>
 
             <div className="relative mb-2">
-                <div className="w-full h-24 rounded-lg flex items-center justify-center relative overflow-hidden">
+                <div className="w-full rounded-lg flex items-center justify-center relative overflow-hidden w-[88px] h-[95px]">
                     <img
                         src={imageUrl}
                         alt={title}
@@ -40,11 +40,12 @@ export function GiftCard({
                         className="w-[88px] h-[95px] object-contain select-none pointer-events-none"
                     />
                 </div>
+                <div className="px-1 pb-1 bg-[#0098EA] rounded-[6px] flex p-[3px] items-center gap-[10px]">
+                    <ShoppingCart className="w-3 h-3 text-white"/>
+                </div>
             </div>
 
-            <div className="px-1 pb-1">
-                <ShoppingCart className="w-3 h-3 text-white"/>
-            </div>
+
         </button>
     );
 }
