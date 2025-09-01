@@ -49,7 +49,6 @@ type ToastType = {
     botMessage?: string;
 };
 
-
 function parseJsonSafe<T = unknown>(text: string): T | null {
     try {
         return text ? (JSON.parse(text) as T) : null;
@@ -61,8 +60,6 @@ function parseJsonSafe<T = unknown>(text: string): T | null {
 function isObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
-
-
 
 function textHasGiftrelayer(t: string): boolean {
     return /(?:^|[\s"'(])@?giftrelayer(?:$|[\s"'():,.!?/])/i.test(t);
@@ -97,7 +94,6 @@ function hasGiftRelayerInUnknown(raw: unknown): boolean {
     }
     return false;
 }
-
 
 export function GiftsList({
                               initData,
