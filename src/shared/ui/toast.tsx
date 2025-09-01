@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle, X, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 
@@ -32,6 +32,17 @@ export function Toast({
         return () => clearTimeout(timer);
     }, [onClose, autoCloseMs]);
 
+    const tag = useMemo(() => {
+        if (!botUsername) return "";
+        return botUsername.startsWith("@") ? botUsername : `@${botUsername}`;
+    }, [botUsername]);
+
+    const handleOpenBot = () => {
+        if (botUsername) {
+            window.open(`https://t.me/${botUsername.replace("@", "")}`, "_blank", "noopener,noreferrer");
+        }
+    };
+
     const copyText = async (text: string, kind: "tag" | "text") => {
         try {
             await navigator.clipboard.writeText(text);
@@ -40,58 +51,76 @@ export function Toast({
         } catch {}
     };
 
-    const handleOpenBot = () => {
-        if (botUsername) {
-            window.open(`https://t.me/${botUsername.replace("@", "")}`, "_blank");
-        }
-    };
-
     if (!show) return null;
 
     const baseBg =
         type === "success" ? "bg-emerald-600" : type === "error" ? "bg-rose-600" : "bg-blue-600";
 
-    const tag = botUsername ? (botUsername.startsWith("@") ? botUsername : `@${botUsername}`) : "";
-
     return (
         <div
-            className={`fixed bottom-4 right-4 z-[9999] max-w-sm w-full p-4 rounded-lg shadow-lg text-white transition-all duration-300 transform ${baseBg}`}
+            className={`fixed bottom-4 right-4 z-[9999] max-w-sm w-full p-4 rounded-lg shadow-lg text-white ${baseBg}`}
             role="status"
             aria-live="polite"
         >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                    {type === "success" ? (
+                        <CheckCircle className="w-5 h-5" />
+                    ) : (
+                        <span className="inline-block w-5 h-5 rounded-full bg-white/20" />
+                    )}
+                </div>
+
                 <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                        {type === "success" && <CheckCircle className="w-5 h-5" />}
-                        <p className="font-medium">{message}</p>
-                    </div>
+                    <p className="font-medium leading-snug text-white">{message}</p>
 
-                    {(tag || botMessage) && (
+                    {botMessage && <p className="text-sm leading-snug mt-1 text-white/90">{botMessage}</p>}
+
+                    {!!tag && (
                         <div className="mt-2 bg-black/20 p-2 rounded">
-                            {botMessage && <p className="text-sm mb-2">{botMessage}</p>}
+                            <button
+                                onClick={handleOpenBot}
+                                className="font-semibold text-[#21ee43] hover:underline underline-offset-2"
+                                title={`Открыть ${tag} в Telegram`}
+                            >
+                                {tag}
+                            </button>
 
-                            {tag && (
-                                <div className="flex items-center gap-2 mb-2">
-                                    <button
-                                        onClick={handleOpenBot}
-                                        className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
-                                        title={`Открыть ${tag} в Telegram`}
-                                    >
-                                        {tag}
-                                    </button>
+                            <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
+                                    onClick={() => copyText(tag, "tag")}
+                                    aria-label="Скопировать тег"
+                                >
+                                    <Copy className="w-3 h-3 mr-1" />
+                                    {copied === "tag" ? "Скопировано" : "Скопировать тег"}
+                                </Button>
 
+                                {botMessage && (
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="text-xs h-7"
-                                        onClick={() => copyText(tag, "tag")}
-                                        aria-label="Скопировать тег"
+                                        className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
+                                        onClick={() => copyText(botMessage, "text")}
+                                        aria-label="Скопировать текст"
                                     >
                                         <Copy className="w-3 h-3 mr-1" />
-                                        {copied === "tag" ? "Скопировано" : "Скопировать"}
+                                        {copied === "text" ? "Скопировано" : "Скопировать текст"}
                                     </Button>
-                                </div>
-                            )}
+                                )}
+
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
+                                    onClick={handleOpenBot}
+                                >
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    Открыть
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -101,7 +130,7 @@ export function Toast({
                         setShow(false);
                         onClose();
                     }}
-                    className="text-white/90 hover:text-white"
+                    className="text-white hover:text-white"
                     aria-label="Закрыть уведомление"
                 >
                     <X className="w-5 h-5" />
