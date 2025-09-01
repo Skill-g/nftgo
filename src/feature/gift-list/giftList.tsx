@@ -1,45 +1,80 @@
-"use client"
+"use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react"
-import useSWR from "swr"
-import { GiftCard } from "./ui/gift-card"
-import { Button } from "@/shared/ui/button"
-import { buildQuery, fetcher, genIdempotencyKey } from "@/shared/lib/utils"
-import { useBalance } from "@/shared/hooks/useBalance"
-import { Toast } from "@/shared/ui/toast"
+import { useState, useCallback, useMemo, useRef } from "react";
+import useSWR from "swr";
+import { GiftCard } from "./ui/gift-card";
+import { Button } from "@/shared/ui/button";
+import { buildQuery, fetcher, genIdempotencyKey } from "@/shared/lib/utils";
+import { useBalance } from "@/shared/hooks/useBalance";
+import { Toast } from "@/shared/ui/toast";
 
 type Gift = {
-    id: number
-    title: string
-    imageKey: string
-    price: number
-    currency: "TON" | string
-    isActive: boolean
-}
+    id: number;
+    title: string;
+    imageKey: string;
+    price: number;
+    currency: "TON" | string;
+    isActive: boolean;
+};
+
+type GiftsResponse = {
+    items: Gift[];
+    total: number;
+    offset: number;
+    limit: number;
+};
 
 type PurchaseItem = {
-    id: number
-    code: string
-    giftId: number
-    title: string
-    imageKey: string
-    acquiredAt: string
-}
+    id: number;
+    code: string;
+    giftId: number;
+    title: string;
+    imageKey: string;
+    acquiredAt: string;
+};
 
 type PurchaseResp = {
-    orderId: number
-    status: string
-    amount: number
-    currency: string
-    quantity: number
-    items: PurchaseItem[]
-}
+    orderId: number;
+    status: string;
+    amount: number;
+    currency: string;
+    quantity: number;
+    items: PurchaseItem[];
+};
 
 type ToastType = {
-    type: "success" | "error" | "bot_required"
-    message: string
-    botUsername?: string
-    botMessage?: string
+    type: "success" | "error" | "bot_required";
+    message: string;
+    botUsername?: string;
+    botMessage?: string;
+};
+
+type ApiErrorBase = { error: string; message?: string; [k: string]: unknown };
+type Upstream = { status?: string; message?: string };
+
+function isObject(v: unknown): v is Record<string, unknown> {
+    return typeof v === "object" && v !== null;
+}
+
+function isUserNotRegistered(v: unknown): v is ApiErrorBase {
+    if (!isObject(v)) return false;
+    return typeof v.error === "string" && v.error === "USER_NOT_REGISTERED_IN_MARKETPLACE";
+}
+
+function isFailedUpstreamGiftRelayer(v: unknown): v is ApiErrorBase & { upstream?: Upstream } {
+    if (!isObject(v)) return false;
+    const err = v.error;
+    const msg = v.message;
+    const upstream = v.upstream;
+
+    const hasGiftRelayer = (m: unknown) => typeof m === "string" && /@giftrelayer/i.test(m);
+
+    return (
+        typeof err === "string" &&
+        err === "FAILED_UPSTREAM" &&
+        (hasGiftRelayer(msg) ||
+            (isObject(upstream) && hasGiftRelayer(upstream.message)))
+    );
 }
 
 export function GiftsList({
@@ -50,15 +85,15 @@ export function GiftsList({
                               activeOnly,
                               sort,
                           }: {
-    initData: string
-    search: string
-    minPrice: number | null
-    maxPrice: number | null
-    activeOnly: boolean
-    sort: "newest"
+    initData: string;
+    search: string;
+    minPrice: number | null;
+    maxPrice: number | null;
+    activeOnly: boolean;
+    sort: "newest";
 }) {
-    const [offset, setOffset] = useState(0)
-    const limit = 20
+    const [offset, setOffset] = useState(0);
+    const limit = 20;
 
     const qs = useMemo(() => {
         const base: Record<string, string | number | boolean | undefined> = {
@@ -68,69 +103,57 @@ export function GiftsList({
             sort,
             activeOnly,
             search: search || undefined,
-        }
-        return buildQuery(base)
-    }, [initData, offset, limit, sort, activeOnly, search])
+        };
+        return buildQuery(base);
+    }, [initData, offset, limit, sort, activeOnly, search]);
 
-    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`
-    const { data, isLoading, mutate } = useSWR(url, fetcher, { keepPreviousData: true })
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`;
+    const { data, isLoading, mutate } = useSWR<GiftsResponse>(url, fetcher, { keepPreviousData: true });
 
-    const itemsServer = data?.items ?? []
+    const itemsServer = data?.items ?? [];
     const items = useMemo(() => {
         return itemsServer.filter((g: Gift) => {
-            if (typeof minPrice === "number" && g.price < minPrice) return false
-            if (typeof maxPrice === "number" && g.price > maxPrice) return false
-            return true
-        })
-    }, [itemsServer, minPrice, maxPrice])
+            if (typeof minPrice === "number" && g.price < minPrice) return false;
+            if (typeof maxPrice === "number" && g.price > maxPrice) return false;
+            return true;
+        });
+    }, [itemsServer, minPrice, maxPrice]);
 
-    const total = data?.total ?? 0
-    const hasMore = offset + limit < total
+    const total = data?.total ?? 0;
+    const hasMore = offset + limit < total;
 
-    const { setOptimistic, refresh } = useBalance(initData)
-    const [, setConfirmId] = useState<number | null>(null)
-    const [busy, setBusy] = useState(false)
-    const [toast, setToast] = useState<ToastType | null>(null)
-
-    useEffect(() => {
-        if (!toast) return
-        const id = setTimeout(() => setToast(null), 3000)
-        return () => clearTimeout(id)
-    }, [toast])
+    const { setOptimistic, refresh } = useBalance(initData);
+    const [busy, setBusy] = useState(false);
+    const [toast, setToast] = useState<ToastType | null>(null);
 
     const giftById = useMemo(() => {
-        const map = new Map<number, Gift>()
-        for (const g of itemsServer) map.set(g.id, g)
-        return map
-    }, [itemsServer])
+        const map = new Map<number, Gift>();
+        for (const g of itemsServer) map.set(g.id, g);
+        return map;
+    }, [itemsServer]);
 
-    const openConfirm = (id: number) => setConfirmId(id)
-    const closeConfirm = () => setConfirmId(null)
-
-    const idempMapRef = useRef<Map<number, string>>(new Map())
-
+    const idempMapRef = useRef<Map<number, string>>(new Map());
     const getIdempotencyKey = (giftId: number) => {
-        const ex = idempMapRef.current.get(giftId)
-        if (ex) return ex
-        const fresh = genIdempotencyKey()
-        idempMapRef.current.set(giftId, fresh)
-        return fresh
-    }
-
+        const ex = idempMapRef.current.get(giftId);
+        if (ex) return ex;
+        const fresh = genIdempotencyKey();
+        idempMapRef.current.set(giftId, fresh);
+        return fresh;
+    };
     const clearIdempotencyKey = (giftId: number) => {
-        idempMapRef.current.delete(giftId)
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        idempMapRef.current.delete(giftId);
+    };
+
     const purchase = useCallback(
         async (id: number) => {
-            const gift = giftById.get(id)
-            if (!gift || !initData || busy) return
+            const gift = giftById.get(id);
+            if (!gift || !initData || busy) return;
 
-            setBusy(true)
-            const idempotencyKey = getIdempotencyKey(gift.id)
+            setBusy(true);
+            const idempotencyKey = getIdempotencyKey(gift.id);
 
             try {
-                setOptimistic(-gift.price)
+                setOptimistic(-gift.price);
 
                 const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts/purchase`, {
                     method: "POST",
@@ -140,66 +163,67 @@ export function GiftsList({
                         giftId: gift.id,
                         idempotencyKey,
                     }),
-                })
+                });
 
                 if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}))
+                    const raw = (await res.json().catch(() => null)) as unknown;
 
-                    if (errorData.error === "USER_NOT_REGISTERED_IN_MARKETPLACE") {
+                    if (isUserNotRegistered(raw)) {
                         setToast({
                             type: "bot_required",
                             message: "Требуется авторизация в боте",
                             botUsername: "Tonnel_Network_bot",
-                            botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка"
-                        })
-                        return
+                            botMessage:
+                                "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка",
+                        });
+                        return;
                     }
 
-                    if (errorData.error === "FAILED_UPSTREAM" && errorData.message?.includes("@giftrelayer")) {
+                    if (isFailedUpstreamGiftRelayer(raw)) {
                         setToast({
                             type: "bot_required",
                             message: "Требуется действие в боте",
                             botUsername: "giftrelayer",
-                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок"
-                        })
-                        return
+                            botMessage:
+                                "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок",
+                        });
+                        return;
                     }
 
-                    clearIdempotencyKey(gift.id)
-                    await refresh()
-                    setToast({ type: "error", message: "Покупка не выполнена" })
-                    return
+                    clearIdempotencyKey(gift.id);
+                    await refresh();
+                    setToast({ type: "error", message: "Покупка не выполнена" });
+                    return;
                 }
 
-                const resp = (await res.json()) as PurchaseResp
-                const delivered = String(resp?.status ?? "").toLowerCase() === "delivered"
+                const resp = (await res.json()) as PurchaseResp;
+                const delivered = String(resp?.status ?? "").toLowerCase() === "delivered";
 
-                await refresh()
-                await mutate()
+                await refresh();
+                await mutate();
 
                 if (delivered) {
-                    const title = resp.items?.[0]?.title ?? gift.title
-                    const amount = typeof resp.amount === "number" ? resp.amount : gift.price
+                    const title = resp.items?.[0]?.title ?? gift.title;
+                    const amount = typeof resp.amount === "number" ? resp.amount : gift.price;
                     setToast({
                         type: "success",
-                        message: `Успешная покупка: ${title} — ${amount.toFixed(3)} TON`
-                    })
-                    clearIdempotencyKey(gift.id)
+                        message: `Успешная покупка: ${title} — ${amount.toFixed(3)} TON`,
+                    });
+                    clearIdempotencyKey(gift.id);
                 } else {
-                    setToast({ type: "error", message: "Покупка не выполнена" })
-                    clearIdempotencyKey(gift.id)
+                    setToast({ type: "error", message: "Покупка не выполнена" });
+                    clearIdempotencyKey(gift.id);
                 }
-            } catch (error) {
-                console.error("Purchase error:", error)
-                await refresh()
-                setToast({ type: "error", message: "Произошла ошибка при покупке" })
+            } catch (error: unknown) {
+                console.error("Purchase error:", error);
+                await refresh();
+                setToast({ type: "error", message: "Произошла ошибка при покупке" });
             } finally {
-                setBusy(false)
-                closeConfirm()
+                setBusy(false);
             }
         },
         [giftById, initData, mutate, refresh, setOptimistic, busy]
-    )
+    );
 
     return (
         <div className="px-4 pb-24">
@@ -210,8 +234,8 @@ export function GiftsList({
                         title={gift.title}
                         price={gift.price}
                         imageUrl={gift.imageKey}
-                        onClick={() => openConfirm(gift.id)}
-                        disabled={busy}
+                        onClick={() => purchase(gift.id)}
+                        disabled={busy || !gift.isActive}
                     />
                 ))}
             </div>
@@ -241,5 +265,5 @@ export function GiftsList({
                 />
             )}
         </div>
-    )
+    );
 }
