@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useUserContext } from "@/shared/context/UserContext";
-import { useGame } from "@/shared/hooks/useGame";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 
@@ -29,6 +27,20 @@ function resolveAnime(mod: AnimeModule): AnimeFn | null {
     return null;
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+    return typeof v === "object" && v !== null;
+}
+
+function readMultiplier(v: unknown): number {
+    if (isRecord(v) && typeof v.multiplier === "number") return v.multiplier;
+    return 1;
+}
+
+function readBetId(v: unknown): number | null {
+    if (isRecord(v) && typeof v.betId === "number") return v.betId;
+    return null;
+}
+
 function formatX(v: number) {
     const s = v.toFixed(2);
     const trimmed = s.replace(/\.?0+$/, "");
@@ -43,6 +55,8 @@ function randomMultiplier() {
 }
 
 type MultipliersProps = {
+    roundId: number | null;
+    initData: string;
     mode?: Mode;
     maxConcurrent?: number;
     mockRateMs?: [number, number];
@@ -50,16 +64,13 @@ type MultipliersProps = {
 };
 
 export function Multipliers({
+                                roundId,
+                                initData,
                                 mode,
                                 maxConcurrent: maxConcurrentProp = 8,
                                 mockRateMs = [200, 400],
                                 queueLimit = 200,
                             }: MultipliersProps) {
-    const { user } = useUserContext();
-    const { state } = useGame();
-    const roundId = state?.roundId ?? null;
-    const initData = user?.initData ?? "";
-
     const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
     const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
 
@@ -68,6 +79,7 @@ export function Multipliers({
     const processed = useRef<Set<number>>(new Set());
     const containerRef = useRef<HTMLDivElement | null>(null);
     const animeRef = useRef<AnimeFn | null>(null);
+    const [animeReady, setAnimeReady] = useState(false);
     const rafId = useRef<number | null>(null);
     const timers = useRef<number[]>([]);
     const maxConcurrent = maxConcurrentProp;
@@ -85,7 +97,10 @@ export function Multipliers({
         import("animejs").then((m) => {
             if (!mounted) return;
             const fn = resolveAnime(m as AnimeModule);
-            if (fn) animeRef.current = fn;
+            if (fn) {
+                animeRef.current = fn;
+                setAnimeReady(true);
+            }
         });
         return () => {
             mounted = false;
@@ -96,16 +111,17 @@ export function Multipliers({
         processed.current.clear();
     }, [roundId]);
 
-
     const realItems = useMemo(() => {
         if (resolvedMode === "mock") return [] as QueueItem[];
         const arr: QueueItem[] = [];
-        for (const b of betsReal) {
-            if (!processed.current.has(b.betId)) {
-                processed.current.add(b.betId);
-                const id = `${b.betId}-${uuidv4()}`;
-                arr.push({ id, label: formatX(b.multiplier), createdAt: Date.now() });
-            }
+        for (const item of betsReal as unknown as ReadonlyArray<unknown>) {
+            const betId = readBetId(item);
+            if (betId === null) continue;
+            if (processed.current.has(betId)) continue;
+            processed.current.add(betId);
+            const id = `${betId}-${uuidv4()}`;
+            const m = readMultiplier(item);
+            arr.push({ id, label: formatX(m), createdAt: Date.now() });
         }
         return arr;
     }, [betsReal, resolvedMode]);
@@ -122,16 +138,12 @@ export function Multipliers({
 
     useEffect(() => {
         if (resolvedMode !== "mock" && resolvedMode !== "hybrid") return;
-
         let cancelled = false;
-
         const tick = () => {
             if (cancelled) return;
-
             setQueue((prev) => {
                 const need = Math.max(0, maxConcurrent * 2 - prev.length);
                 if (need === 0) return prev;
-
                 const seenIds = new Set([...prev, ...active].map((item) => item.id));
                 const batch: QueueItem[] = [];
                 for (let i = 0; i < need; i++) {
@@ -144,13 +156,11 @@ export function Multipliers({
                 const next = [...prev, ...batch];
                 return next.length > queueLimit ? next.slice(-queueLimit) : next;
             });
-
             const [a, b] = mockRateMs;
             const delay = a + Math.random() * Math.max(0, b - a);
             const t = window.setTimeout(tick, delay);
             timers.current.push(t);
         };
-
         tick();
         return () => {
             cancelled = true;
@@ -180,8 +190,7 @@ export function Multipliers({
     }, [queue, active.length, maxConcurrent]);
 
     useEffect(() => {
-        if (!containerRef.current || !active.length || !animeRef.current) return;
-
+        if (!containerRef.current || !active.length || !animeRef.current || !animeReady) return;
         const current = active[active.length - 1];
         const el = nodeMapRef.current.get(current.id);
         if (!el) return;
@@ -216,33 +225,21 @@ export function Multipliers({
             complete: () => {
                 setActive((prev) => prev.filter((p) => p.id !== current.id));
                 nodeMapRef.current.delete(current.id);
-
                 if (resolvedMode === "mock" || resolvedMode === "hybrid") {
                     setQueue((prev) => {
                         const seenIds = new Set([...prev, ...active].map((item) => item.id));
                         const newId = uuidv4();
                         if (seenIds.has(newId)) return prev;
-                        const next = [
-                            ...prev,
-                            {
-                                id: newId,
-                                label: formatX(randomMultiplier()),
-                                createdAt: Date.now(),
-                            },
-                        ];
+                        const next = [...prev, { id: newId, label: formatX(randomMultiplier()), createdAt: Date.now() }];
                         return next.length > queueLimit ? next.slice(-queueLimit) : next;
                     });
                 }
             },
         });
-     }, [active, queueLimit, resolvedMode]);
+    }, [active, queueLimit, resolvedMode, animeReady]);
 
     return (
-        <div
-            ref={containerRef}
-            className="relative h-[30px] w-full overflow-hidden gap-[6px] flex"
-            aria-label="multipliers-stream"
-        >
+        <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label="multipliers-stream">
             {active.map((item) => (
                 <div
                     key={item.id}

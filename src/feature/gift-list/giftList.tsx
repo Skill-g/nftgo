@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
+import {useState, useCallback, useMemo, useRef, useEffect, JSX} from "react";
 import useSWR from "swr";
 import { GiftCard } from "./ui/gift-card";
 import { Button } from "@/shared/ui/button";
 import { buildQuery, fetcher, genIdempotencyKey } from "@/shared/lib/utils";
 import { useBalance } from "@/shared/hooks/useBalance";
-import { Toast } from "@/shared/ui/toast";
+import { X } from "lucide-react";
 
 type Gift = {
     id: number;
@@ -42,13 +42,6 @@ type PurchaseResp = {
     items: PurchaseItem[];
 };
 
-type ToastType = {
-    type: "success" | "error" | "bot_required";
-    message: string;
-    botUsername?: string;
-    botMessage?: string;
-};
-
 function parseJsonSafe<T = unknown>(text: string): T | null {
     try {
         return text ? (JSON.parse(text) as T) : null;
@@ -57,8 +50,8 @@ function parseJsonSafe<T = unknown>(text: string): T | null {
     }
 }
 
-function isObject(v: unknown): v is Record<string, unknown> {
-    return typeof v === "object" && v !== null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
 }
 
 function textHasGiftrelayer(t: string): boolean {
@@ -71,29 +64,152 @@ function textHasUserNotRegistered(t: string): boolean {
 
 function isUserNotRegisteredErr(raw: unknown): boolean {
     if (typeof raw === "string") return textHasUserNotRegistered(raw);
-    if (isObject(raw)) {
-        const err = raw.error;
-        const msg = raw.message;
+
+    if (isRecord(raw)) {
+        const err = typeof raw.error === "string" ? raw.error : undefined;
+        const msg = typeof raw.message === "string" ? raw.message : undefined;
+
         return (
             err === "USER_NOT_REGISTERED_IN_MARKETPLACE" ||
             (typeof msg === "string" && textHasUserNotRegistered(msg))
         );
     }
+
     return false;
 }
 
 function hasGiftRelayerInUnknown(raw: unknown): boolean {
     if (typeof raw === "string") return textHasGiftrelayer(raw);
-    if (isObject(raw)) {
-        const candidates: unknown[] = [
-            raw.message,
-            isObject(raw.upstream) ? (raw.upstream as Record<string, unknown>).message : undefined,
-            ...Object.values(raw),
-        ];
+
+    if (isRecord(raw)) {
+        const upstream = isRecord(raw.upstream) ? (raw.upstream as Record<string, unknown>) : undefined;
+
+        const candidates: unknown[] = [raw.message, upstream?.message, ...Object.values(raw)];
         return candidates.some((v) => (typeof v === "string" ? textHasGiftrelayer(v) : false));
     }
+
     return false;
 }
+
+/** Делает @username кликабельным => https://t.me/username */
+function linkifyTelegramMentions(text: string) {
+    const parts: (string | JSX.Element)[] = [];
+    const re = /@([A-Za-z0-9_]+)/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+        const start = m.index;
+        if (start > last) parts.push(text.slice(last, start));
+        const username = m[1];
+        parts.push(
+            <a
+                key={`tg-${start}`}
+                href={`https://t.me/${username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#229ED9] hover:underline"
+            >
+                @{username}
+            </a>
+        );
+        last = start + m[0].length;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return parts;
+}
+
+type StepsModalProps = {
+    open: boolean;
+    onClose: () => void;
+    storageKey: string;
+    steps: string[];
+    confirmText?: string;
+    onConfirm?: () => void;
+    disablePersist?: boolean; // не записывать ack в тестовом режиме
+};
+
+function StepsModal({
+                        open,
+                        onClose,
+                        storageKey,
+                        steps,
+                        confirmText = "Я понял",
+                        onConfirm,
+                        disablePersist = false,
+                    }: StepsModalProps) {
+    useEffect(() => {
+        if (!open) return;
+        const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+        window.addEventListener("keydown", onEsc);
+        return () => window.removeEventListener("keydown", onEsc);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    const acknowledge = () => {
+        if (!disablePersist) {
+            try {
+                localStorage.setItem(storageKey, "1");
+            } catch {}
+        }
+        onConfirm?.();
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center" role="dialog" aria-modal="true">
+            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+            <div className="relative z-10 w-[calc(100vw-2rem)] sm:w-[560px] rounded-xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between px-5 py-4 border-b">
+                    <h3 className="text-lg font-semibold text-black">Как купить подарок?</h3>
+                    <button onClick={onClose} className="p-1 rounded hover:bg-black/5" aria-label="Закрыть">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="px-5 py-4">
+                    <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed">
+                        {steps.map((s, i) => (
+                            <li key={i} className="text-gray-800">
+                                {linkifyTelegramMentions(s)}
+                            </li>
+                        ))}
+                    </ol>
+
+                    {/* Кнопки для перехода к ботам */}
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a
+                            href="https://t.me/Tonnel_Network_bot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Открыть @Tonnel_Network_bot"
+                            className="block"
+                        >
+                            <Button className="w-full">@Tonnel_Network_bot</Button>
+                        </a>
+                        <a
+                            href="https://t.me/giftrelayer"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Открыть @giftrelayer"
+                            className="block"
+                        >
+                            <Button className="w-full">@giftrelayer</Button>
+                        </a>
+                    </div>
+                </div>
+
+                <div className="px-5 pb-5">
+                    <Button className="w-full" onClick={acknowledge}>
+                        {confirmText}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const PURCHASE_STEPS_ACK_KEY = "gift_purchase_steps_ack_v1";
 
 export function GiftsList({
                               initData,
@@ -102,6 +218,7 @@ export function GiftsList({
                               maxPrice,
                               activeOnly,
                               sort,
+                              forceShowSteps, // тестовый оверрайд
                           }: {
     initData: string;
     search: string;
@@ -109,7 +226,27 @@ export function GiftsList({
     maxPrice: number | null;
     activeOnly: boolean;
     sort: "newest";
+    forceShowSteps?: boolean;
 }) {
+    const [showSteps, setShowSteps] = useState(false);
+
+    useEffect(() => {
+        const urlFlag =
+            typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("showSteps") === "1";
+
+        if (forceShowSteps || urlFlag) {
+            setShowSteps(true);
+            return;
+        }
+
+        try {
+            const ack =
+                typeof window !== "undefined" ? localStorage.getItem(PURCHASE_STEPS_ACK_KEY) : "1";
+            if (!ack) setShowSteps(true);
+        } catch {}
+    }, [forceShowSteps]);
+
     const [offset, setOffset] = useState(0);
     const limit = 20;
 
@@ -144,7 +281,6 @@ export function GiftsList({
 
     const { setOptimistic, refresh } = useBalance(initData);
     const [busy, setBusy] = useState(false);
-    const [toast, setToast] = useState<ToastType | null>(null);
 
     const giftById = useMemo(() => {
         const map = new Map<number, Gift>();
@@ -190,47 +326,27 @@ export function GiftsList({
 
                 if (!res.ok) {
                     if (isUserNotRegisteredErr(raw) || isUserNotRegisteredErr(text)) {
-                        setToast({
-                            type: "bot_required",
-                            message: "Требуется авторизация в боте",
-                            botUsername: "Tonnel_Network_bot",
-                            botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка.",
-                        });
+                        setShowSteps(true);
                         return;
                     }
 
                     if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
-                        setToast({
-                            type: "bot_required",
-                            message: "Требуется действие в боте",
-                            botUsername: "giftrelayer",
-                            botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок. ",
-                        });
+                        setShowSteps(true);
                         return;
                     }
 
                     clearIdempotencyKey(gift.id);
                     await refresh();
-                    setToast({ type: "error", message: "Покупка не выполнена" });
                     return;
                 }
 
                 if (isUserNotRegisteredErr(raw) || isUserNotRegisteredErr(text)) {
-                    setToast({
-                        type: "bot_required",
-                        message: "Требуется авторизация в боте",
-                        botUsername: "Tonnel_Network_bot",
-                        botMessage: "Пожалуйста, авторизуйтесь в боте: @Tonnel_Network_bot, для последующей покупки подарка.",
-                    });
+                    setShowSteps(true);
                     return;
                 }
+
                 if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
-                    setToast({
-                        type: "bot_required",
-                        message: "Требуется действие в боте",
-                        botUsername: "giftrelayer",
-                        botMessage: "Напишите Hi в бот @giftrelayer, чтобы вам можно было отправить подарок.",
-                    });
+                    setShowSteps(true);
                     return;
                 }
 
@@ -241,26 +357,28 @@ export function GiftsList({
                 await mutate();
 
                 if (delivered) {
-                    const title = resp?.items?.[0]?.title ?? gift.title;
-                    const amount = typeof resp?.amount === "number" ? resp.amount : gift.price;
-                    setToast({
-                        type: "success",
-                        message: `Успешная покупка: ${title} — ${amount.toFixed(3)} TON`,
-                    });
                     clearIdempotencyKey(gift.id);
                 } else {
-                    setToast({ type: "error", message: "Покупка не выполнена" });
                     clearIdempotencyKey(gift.id);
                 }
             } catch (error: unknown) {
                 console.error("Purchase error:", error);
                 await refresh();
-                setToast({ type: "error", message: "Произошла ошибка при покупке" });
             } finally {
                 setBusy(false);
             }
         },
         [giftById, initData, mutate, refresh, setOptimistic, busy]
+    );
+
+    const purchaseSteps = useMemo(
+        () => [
+            "Авторизуйтесь в Telegram-боте @Tonnel_Network_bot (это нужно для покупок).",
+            "Напишите @giftrelayer — откройте бот и отправьте «Hi», либо любое другое сообщение",
+            "Убедитесь, что на балансе достаточно TON",
+            "Выберите подарок и купите его",
+        ],
+        []
     );
 
     return (
@@ -283,25 +401,20 @@ export function GiftsList({
 
             {hasMore && (
                 <div className="flex justify-center mt-8">
-                    <Button
-                        onClick={() => setOffset((prev) => prev + limit)}
-                        disabled={isLoading}
-                        className="px-8"
-                    >
+                    <Button onClick={() => setOffset((prev) => prev + limit)} disabled={isLoading} className="px-8">
                         Загрузить еще
                     </Button>
                 </div>
             )}
 
-            {toast && (
-                <Toast
-                    type={toast.type}
-                    message={toast.message}
-                    botUsername={toast.botUsername}
-                    botMessage={toast.botMessage}
-                    onClose={() => setToast(null)}
-                />
-            )}
+            <StepsModal
+                open={showSteps}
+                onClose={() => setShowSteps(false)}
+                storageKey={PURCHASE_STEPS_ACK_KEY}
+                steps={purchaseSteps}
+                confirmText="Я понял"
+                disablePersist={forceShowSteps === true}
+            />
         </div>
     );
 }

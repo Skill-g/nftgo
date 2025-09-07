@@ -5,6 +5,9 @@ import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
 import { useGame } from "@/shared/hooks/useGame";
+import { motion, AnimatePresence } from "framer-motion";
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_CRUSH === "1";
 
 type GameAreaProps = {
     resetBets: () => void;
@@ -12,6 +15,71 @@ type GameAreaProps = {
     setCurrentMultiplier: (multiplier: number) => void;
     setRoundId: (id: number | null) => void;
 };
+
+function useCountdown(sourceTimeToStart?: number | null) {
+    const [now, setNow] = useState(() => Date.now());
+    const endRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (sourceTimeToStart == null) {
+            endRef.current = null;
+            return;
+        }
+        const ms = sourceTimeToStart > 1000 ? sourceTimeToStart : sourceTimeToStart * 1000;
+        endRef.current = Date.now() + ms;
+        setNow(Date.now());
+    }, [sourceTimeToStart]);
+    useEffect(() => {
+        const id = setInterval(() => setNow(Date.now()), 100);
+        return () => clearInterval(id);
+    }, []);
+    const remainingMs = Math.max(0, (endRef.current ?? Date.now()) - now);
+    const remainingSec = Math.ceil(remainingMs / 1000);
+    return remainingSec;
+}
+
+function useMockSeconds(enabled: boolean, initial = 12) {
+    const [remaining, setRemaining] = useState(initial);
+    useEffect(() => {
+        if (!enabled) return;
+        setRemaining(initial);
+        const id = setInterval(() => {
+            setRemaining((v) => (v <= 1 ? initial : v - 1));
+        }, 1000);
+        return () => clearInterval(id);
+    }, [enabled, initial]);
+    return remaining;
+}
+
+function Digit({ value, idx, tickKey }: { value: string; idx: number; tickKey: number }) {
+    return (
+        <span className="relative inline-block w-[0.7em] h-[1em] overflow-hidden align-baseline">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+            key={`${idx}-${value}-${tickKey}`}
+            initial={{ y: "0.8em", opacity: 0, scale: 0.7, filter: "blur(6px)" }}
+            animate={{ y: "0em", opacity: 1, scale: 1, filter: "blur(0px)" }}
+            exit={{ y: "-0.8em", opacity: 0, scale: 1.15, filter: "blur(6px)" }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="text-6xl md:text-7xl font-extrabold"
+            style={{ display: "inline-block", lineHeight: 1, color: "#8845f5" }}
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+    );
+}
+
+function AnimatedSeconds({ seconds }: { seconds: number }) {
+    const text = String(seconds);
+    return (
+        <div className="mt-2 flex items-center justify-center gap-[0.02em] select-none" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {text.split("").map((ch, i) => (
+                <Digit key={`d-${i}`} value={ch} idx={i} tickKey={seconds} />
+            ))}
+        </div>
+    );
+}
 
 export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
     const { state } = useGame();
@@ -35,10 +103,12 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
         }
     }, [state.phase, resetBets]);
 
-    const isActive = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
+    const isActiveReal = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
+    const isActive = USE_MOCK ? false : isActiveReal;
 
-    const total = state.waitTotal || state.timeToStart || 0;
-    const fillPercent = total > 0 ? Math.max(0, Math.min(100, Math.round(((total - state.timeToStart) / total) * 100))) : 0;
+    const remainingReal = useCountdown(state.timeToStart ?? 0);
+    const remainingMock = useMockSeconds(USE_MOCK, 12);
+    const remainingSec = USE_MOCK ? remainingMock : remainingReal;
 
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
@@ -118,19 +188,11 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                             <Image src={"/rocket/rocket.png"} alt={"rocket"} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
                         </div>
                         <h2 className="text-xl font-bold">ОЖИДАНИЕ</h2>
-                        <h3 className="text-lg mb-3">СЛЕДУЮЩЕГО РАУНДА</h3>
-                        <div className="h-2 w-full bg-[#96969680] rounded overflow-hidden">
-                            <div
-                                style={{
-                                    width: `${fillPercent}%`,
-                                    height: "100%",
-                                    backgroundColor: "#8845F5",
-                                    transition: "width 250ms linear",
-                                }}
-                            />
-                        </div>
+                        <h3 className="text-lg mb-2">СЛЕДУЮЩЕГО РАУНДА</h3>
+                        <AnimatedSeconds seconds={remainingSec} />
                     </>
                 )}
+
                 {isActive && (
                     <div ref={trackRef} className="relative w-full mt-12" style={{ height: 128, minHeight: 128, marginBottom: 16 }}>
                         <div className="absolute left-0 w-full flex justify-center" style={{ top: 0, zIndex: 10, pointerEvents: "none" }}>

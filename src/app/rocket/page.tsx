@@ -32,7 +32,6 @@ export default function Page() {
             if (!host) return;
 
             const amount = bets[index].amount;
-
             setOptimistic(-amount);
 
             try {
@@ -46,9 +45,7 @@ export default function Page() {
                     return;
                 }
                 const json: { betId: number; roundId: number; status: string; userBalance?: number } = await res.json();
-
                 setBets((prev) => prev.map((b, i) => (i === index ? { ...b, placed: true, betId: json.betId } : b)));
-
                 await refresh();
             } catch {
                 await refresh();
@@ -92,7 +89,7 @@ export default function Page() {
     return (
         <div className="flex flex-col gap-3">
             <NewsBanner />
-            <Multipliers />
+            <Multipliers roundId={roundId} initData={initData} />
             <div className="bg-[#8845F533]/20 h-[2px] w-[100%]" />
             {user?.initData && (
                 <GameArea
