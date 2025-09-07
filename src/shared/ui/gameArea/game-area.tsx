@@ -52,7 +52,7 @@ function useMockSeconds(enabled: boolean, initial = 12) {
 
 function Digit({ value, idx, tickKey }: { value: string; idx: number; tickKey: number }) {
     return (
-        <span className="relative inline-block w-[0.7em] h-[1em] overflow-hidden align-baseline">
+        <span className="relative inline-block overflow-hidden align-baseline">
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
             key={`${idx}-${value}-${tickKey}`}
@@ -188,7 +188,6 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                             <Image src={"/rocket/rocket.png"} alt={"rocket"} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
                         </div>
                         <h2 className="text-xl font-bold">ОЖИДАНИЕ</h2>
-                        <h3 className="text-lg mb-2">СЛЕДУЮЩЕГО РАУНДА</h3>
                         <AnimatedSeconds seconds={remainingSec} />
                     </>
                 )}
