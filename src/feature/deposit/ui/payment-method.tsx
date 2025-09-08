@@ -14,19 +14,25 @@ export function PaymentMethod({
             <div
                 onClick={() => setSelectedPaymentMethod("ton")}
                 className={`w-[191px] h-[100px] flex justify-center p-4 rounded-xl border-2 transition-all ${
-                    selectedPaymentMethod === "ton" ? "border-[#1B1636] bg-[#1B1636]" : "border-[#262352] bg-[#262352]"
+                    selectedPaymentMethod === "ton" ? "border-[#1B1636] bg-[#1B1636]" : "border-[#0098ea] bg-[#0098ea]"
                 }`}
             >
-                <Image src={'/tonCoin.svg'} alt={'tonCoin'} width={45} height={45}/>
+                <div className="flex flex-col text-white items-center text-center gap-1">
+                    <Image src={'/tonCoin.svg'} alt={'tonCoin'} width={45} height={45}/>
+                    <p>TON</p>
+                </div>
             </div>
-            <div />
+            <div/>
             <div
                 onClick={() => setSelectedPaymentMethod("method2")}
                 className={`w-[191px] h-[100px] flex justify-center p-4 rounded-xl border-2 transition-all ${
-                    selectedPaymentMethod === "method2" ? "border-[#1B1636] bg-[#1B1636]" : "border-[#262352] bg-[#262352]"
+                    selectedPaymentMethod === "method2" ? "border-[#1B1636] bg-[#1B1636]" : "border-[#11b4ec] bg-[#11b4ec]"
                 }`}
             >
-                <Image src={'/deposit.svg'} alt={'deposit-2'} width={45} height={45}/>
+                <div className="flex flex-col text-white items-center text-center gap-1">
+                    <Image src={'/deposit.svg'} alt={'deposit-2'} width={45} height={45}/>
+                    <p>CryptoBot</p>
+                </div>
             </div>
         </div>
     )

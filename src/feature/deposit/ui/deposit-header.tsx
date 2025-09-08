@@ -12,7 +12,7 @@ export function DepositHeader({setShowDepositModal}: {setShowDepositModal: (valu
         >
             <X className="w-5 h-5" />
         </Button>
-            <div>
+            <div className="text-center">
                 <h2 className="text-2xl font-bold text-white mb-1">Deposit</h2>
                 <p className="text-[#bcbcbc] text-sm">Select the method of deposit</p>
             </div>

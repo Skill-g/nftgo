@@ -178,7 +178,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
 
     return (
         <Card
-            style={{ height: "248px" }}
+            style={{ height: "248px", zIndex: 0 }}
             className={`bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden ${isActive ? styles.background : ""}`}
         >
             <CardContent className="p-8 text-center flex flex-col items-center justify-center" style={{ paddingTop: 1 }}>

@@ -1,6 +1,5 @@
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import Image from "next/image";
 import { useOnlineUsersContext } from "@/shared/context/OnlineUsersContext";
 
 export function NewsBanner() {
@@ -18,7 +17,10 @@ export function NewsBanner() {
             </Card>
 
             <div className="bg-[#163200] border-1 border-white/50 rounded-lg p-3 flex items-center gap-2">
-                <Image src={'/rocket/wifi.png'} alt={'wifi'} width={20} height={20} />
+                <div data-v-44628978="" className="flex gap-1 text-[#23c265]">
+                    <div data-v-44628978="" className="live-text">Live</div>
+                    <div data-v-44628978="" className="live-dot pulse">•</div>
+                </div>
                 {loading ? (
                     <span className="text-white font-bold">0</span>
                 ) : error ? (
