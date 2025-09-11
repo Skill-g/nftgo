@@ -58,7 +58,7 @@ export function Deposit({ showDepositModal, setShowDepositModal }: { showDeposit
         const n = Number(amount);
         return Number.isFinite(n) ? n : NaN;
     }, [amount]);
-    const validAmount = numericAmount >= 1;
+    const validAmount = numericAmount >= 0.1;
     const disabled = !validAmount || !selectedPaymentMethod || submitting;
     const buttonText = selectedPaymentMethod === "cryptopay" ? "Pay via CryptoBot" : isConnected ? "Deposit" : "Please connect your wallet";
 
