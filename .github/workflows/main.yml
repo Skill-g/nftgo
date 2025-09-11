@@ -24,14 +24,18 @@ jobs:
             cd /home/site/nftgo
             git pull origin main
 
+            docker pull node:20-alpine || true
+
             if command -v docker compose >/dev/null 2>&1; then
-              docker compose build --pull
+              docker compose build
               docker compose down --remove-orphans -v
               docker network prune -f || true
               docker compose up -d
             else
-              docker-compose build --pull
+              docker-compose build
               docker-compose down --remove-orphans -v
               docker network prune -f || true
               docker-compose up -d
             fi
+
+            docker ps
