@@ -19,7 +19,6 @@ type AnimeParams = {
 };
 type AnimeFn = (params: AnimeParams) => unknown;
 type AnimeModule = { default: AnimeFn } | Record<string, unknown>;
-
 type Mode = "mock" | "live" | "hybrid";
 
 function resolveAnime(mod: AnimeModule): AnimeFn | null {
@@ -94,6 +93,7 @@ export function Multipliers({
     const [animeReady, setAnimeReady] = useState(false);
     const rafId = useRef<number | null>(null);
     const timers = useRef<number[]>([]);
+    const gcTimer = useRef<number | null>(null);
     const maxConcurrent = maxConcurrentProp;
 
     const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -124,18 +124,24 @@ export function Multipliers({
         let cancelled = false;
         const host = getBackendHost();
         const base = `https://${host}/api/game/history`;
+        const controller = new AbortController();
         async function load() {
             if (cancelled || fetching.current) return;
             fetching.current = true;
             try {
-                const url = `${base}?_t=${Date.now()}${lastSeenRoundId.current ? `&after=${lastSeenRoundId.current}` : ""}`;
-                const res = await fetch(url, { cache: "no-store" });
+                const url = `${base}?_=${Date.now()}`;
+                const res = await fetch(url, {
+                    cache: "no-store",
+                    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+                    signal: controller.signal,
+                });
                 if (!res.ok) return;
                 const data: HistoryRow[] = await res.json();
-                const fresh = data.filter((r) => !processed.current.has(r.roundId) && r.roundId > lastSeenRoundId.current);
+                if (!Array.isArray(data) || !data.length) return;
+                const sorted = [...data].sort((a, b) => a.roundId - b.roundId);
+                const fresh = sorted.filter((r) => r.roundId > lastSeenRoundId.current && !processed.current.has(r.roundId));
                 if (fresh.length) {
-                    const maxId = fresh.reduce((m, r) => (r.roundId > m ? r.roundId : m), lastSeenRoundId.current);
-                    lastSeenRoundId.current = maxId;
+                    lastSeenRoundId.current = Math.max(lastSeenRoundId.current, fresh[fresh.length - 1].roundId);
                     setHistory((prev) => {
                         const all = [...prev, ...fresh];
                         return all.length > queueLimit ? all.slice(-queueLimit) : all;
@@ -146,16 +152,39 @@ export function Multipliers({
                 fetching.current = false;
             }
         }
+        function kick() {
+            load();
+        }
         load();
-        const id = window.setInterval(load, 1500);
+        const id = window.setInterval(load, 1000);
         const onVis = () => {
-            if (!document.hidden) load();
+            if (!document.hidden) kick();
         };
+        const onFocus = () => kick();
         document.addEventListener("visibilitychange", onVis);
+        window.addEventListener("focus", onFocus);
         return () => {
             cancelled = true;
+            controller.abort();
             clearInterval(id);
             document.removeEventListener("visibilitychange", onVis);
+            window.removeEventListener("focus", onFocus);
+        };
+    }, [queueLimit]);
+
+    useEffect(() => {
+        if (gcTimer.current) window.clearInterval(gcTimer.current);
+        gcTimer.current = window.setInterval(() => {
+            if (processed.current.size > queueLimit * 3) {
+                const ids = Array.from(processed.current).sort((a, b) => a - b);
+                const keepFrom = Math.max(0, ids.length - queueLimit * 2);
+                const toRemove = ids.slice(0, keepFrom);
+                for (const id of toRemove) processed.current.delete(id);
+            }
+        }, 10000) as unknown as number;
+        return () => {
+            if (gcTimer.current) window.clearInterval(gcTimer.current);
+            gcTimer.current = null;
         };
     }, [queueLimit]);
 
