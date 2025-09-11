@@ -1,7 +1,7 @@
 "use client";
 
 import {useState, useCallback, useMemo, useRef, useEffect, JSX} from "react";
-import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 import { GiftCard } from "./ui/gift-card";
 import { Button } from "@/shared/ui/button";
 import { buildQuery, fetcher, genIdempotencyKey } from "@/shared/lib/utils";
@@ -24,23 +24,6 @@ type GiftsResponse = {
     limit: number;
 };
 
-type PurchaseItem = {
-    id: number;
-    code: string;
-    giftId: number;
-    title: string;
-    imageKey: string;
-    acquiredAt: string;
-};
-
-type PurchaseResp = {
-    orderId: number;
-    status: string;
-    amount: number;
-    currency: string;
-    quantity: number;
-    items: PurchaseItem[];
-};
 
 function parseJsonSafe<T = unknown>(text: string): T | null {
     try {
@@ -49,49 +32,36 @@ function parseJsonSafe<T = unknown>(text: string): T | null {
         return null;
     }
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
 }
-
 function textHasGiftrelayer(t: string): boolean {
     return /(?:^|[\s"'(])@?giftrelayer(?:$|[\s"'():,.!?/])/i.test(t);
 }
-
 function textHasUserNotRegistered(t: string): boolean {
     return /USER_NOT_REGISTERED_IN_MARKETPLACE/i.test(t);
 }
-
 function isUserNotRegisteredErr(raw: unknown): boolean {
     if (typeof raw === "string") return textHasUserNotRegistered(raw);
-
     if (isRecord(raw)) {
         const err = typeof raw.error === "string" ? raw.error : undefined;
         const msg = typeof raw.message === "string" ? raw.message : undefined;
-
         return (
             err === "USER_NOT_REGISTERED_IN_MARKETPLACE" ||
             (typeof msg === "string" && textHasUserNotRegistered(msg))
         );
     }
-
     return false;
 }
-
 function hasGiftRelayerInUnknown(raw: unknown): boolean {
     if (typeof raw === "string") return textHasGiftrelayer(raw);
-
     if (isRecord(raw)) {
         const upstream = isRecord(raw.upstream) ? (raw.upstream as Record<string, unknown>) : undefined;
-
         const candidates: unknown[] = [raw.message, upstream?.message, ...Object.values(raw)];
         return candidates.some((v) => (typeof v === "string" ? textHasGiftrelayer(v) : false));
     }
-
     return false;
 }
-
-/** Делает @username кликабельным => https://t.me/username */
 function linkifyTelegramMentions(text: string) {
     const parts: (string | JSX.Element)[] = [];
     const re = /@([A-Za-z0-9_]+)/g;
@@ -125,9 +95,8 @@ type StepsModalProps = {
     steps: string[];
     confirmText?: string;
     onConfirm?: () => void;
-    disablePersist?: boolean; // не записывать ack в тестовом режиме
+    disablePersist?: boolean;
 };
-
 function StepsModal({
                         open,
                         onClose,
@@ -176,7 +145,6 @@ function StepsModal({
                         ))}
                     </ol>
 
-                    {/* Кнопки для перехода к ботам */}
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <a
                             href="https://t.me/Tonnel_Network_bot"
@@ -218,7 +186,7 @@ export function GiftsList({
                               maxPrice,
                               activeOnly,
                               sort,
-                              forceShowSteps, // тестовый оверрайд
+                              forceShowSteps,
                           }: {
     initData: string;
     search: string;
@@ -239,18 +207,17 @@ export function GiftsList({
             setShowSteps(true);
             return;
         }
-
         try {
-            const ack =
-                typeof window !== "undefined" ? localStorage.getItem(PURCHASE_STEPS_ACK_KEY) : "1";
+            const ack = typeof window !== "undefined" ? localStorage.getItem(PURCHASE_STEPS_ACK_KEY) : "1";
             if (!ack) setShowSteps(true);
         } catch {}
     }, [forceShowSteps]);
 
-    const [offset, setOffset] = useState(0);
     const limit = 20;
 
-    const qs = useMemo(() => {
+    const getKey = (pageIndex: number, previousPageData: GiftsResponse | null) => {
+        if (previousPageData && previousPageData.items.length === 0) return null;
+        const offset = pageIndex * limit;
         const base: Record<string, string | number | boolean | undefined> = {
             initData,
             offset,
@@ -259,34 +226,55 @@ export function GiftsList({
             activeOnly,
             search: search || undefined,
         };
-        return buildQuery(base);
-    }, [initData, offset, limit, sort, activeOnly, search]);
+        const qs = buildQuery(base);
+        return `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`;
+    };
 
-    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/gifts?${qs}`;
-    const { data, isLoading, mutate } = useSWR<GiftsResponse>(url, fetcher, {
+    const { data, isLoading, isValidating, setSize, mutate, size } = useSWRInfinite<GiftsResponse>(getKey, fetcher, {
+        revalidateFirstPage: true,
         keepPreviousData: true,
     });
 
-    const itemsServer = data?.items ?? [];
+    const resetOnDeps = [initData, search, activeOnly, sort].join("|");
+    useEffect(() => {
+        setSize(1);
+    }, [resetOnDeps, setSize]);
+
+    const allServerItems: Gift[] = useMemo(() => {
+        const pages = data ?? [];
+        const seen = new Set<number>();
+        const acc: Gift[] = [];
+        for (const p of pages) {
+            for (const g of p.items) {
+                if (!seen.has(g.id)) {
+                    seen.add(g.id);
+                    acc.push(g);
+                }
+            }
+        }
+        return acc;
+    }, [data]);
+
     const items = useMemo(() => {
-        return itemsServer.filter((g: Gift) => {
+        return allServerItems.filter((g) => {
             if (typeof minPrice === "number" && g.price < minPrice) return false;
             if (typeof maxPrice === "number" && g.price > maxPrice) return false;
             return true;
         });
-    }, [itemsServer, minPrice, maxPrice]);
+    }, [allServerItems, minPrice, maxPrice]);
 
-    const total = data?.total ?? 0;
-    const hasMore = offset + limit < total;
+    const total = data?.[0]?.total ?? 0;
+    const loadedCount = allServerItems.length;
+    const hasMore = loadedCount < total;
 
     const { setOptimistic, refresh } = useBalance(initData);
     const [busy, setBusy] = useState(false);
 
     const giftById = useMemo(() => {
         const map = new Map<number, Gift>();
-        for (const g of itemsServer) map.set(g.id, g);
+        for (const g of allServerItems) map.set(g.id, g);
         return map;
-    }, [itemsServer]);
+    }, [allServerItems]);
 
     const idempMapRef = useRef<Map<number, string>>(new Map());
     const getIdempotencyKey = (giftId: number) => {
@@ -329,12 +317,10 @@ export function GiftsList({
                         setShowSteps(true);
                         return;
                     }
-
                     if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
                         setShowSteps(true);
                         return;
                     }
-
                     clearIdempotencyKey(gift.id);
                     await refresh();
                     return;
@@ -344,23 +330,14 @@ export function GiftsList({
                     setShowSteps(true);
                     return;
                 }
-
                 if (hasGiftRelayerInUnknown(raw) || textHasGiftrelayer(text)) {
                     setShowSteps(true);
                     return;
                 }
 
-                const resp = (raw ?? parseJsonSafe<PurchaseResp>(text)) as PurchaseResp | null;
-                const delivered = String(resp?.status ?? "").toLowerCase() === "delivered";
-
                 await refresh();
                 await mutate();
-
-                if (delivered) {
-                    clearIdempotencyKey(gift.id);
-                } else {
-                    clearIdempotencyKey(gift.id);
-                }
+                clearIdempotencyKey(gift.id);
             } catch (error: unknown) {
                 console.error("Purchase error:", error);
                 await refresh();
@@ -381,10 +358,32 @@ export function GiftsList({
         []
     );
 
+    const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!sentinelRef.current) return;
+        const el = sentinelRef.current;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const [entry] = entries;
+                if (entry.isIntersecting && hasMore && !isValidating) {
+                    setSize((s) => s + 1);
+                }
+            },
+            {
+                root: null,
+                rootMargin: "400px",
+                threshold: 0,
+            }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasMore, isValidating, setSize, sentinelRef]);
+
     return (
         <div className="px-4 pb-24 mt-[20px]">
             <div className="grid grid-cols-3 gap-4">
-                {items.map((gift: Gift) => (
+                {items.map((gift) => (
                     <GiftCard
                         key={gift.id}
                         title={gift.title}
@@ -396,16 +395,26 @@ export function GiftsList({
                 ))}
             </div>
 
-            {isLoading && <div className="text-center py-8">Загрузка...</div>}
-            {!isLoading && items.length === 0 && <div className="text-center py-8">Подарки не найдены</div>}
-
-            {hasMore && (
-                <div className="flex justify-center mt-8">
-                    <Button onClick={() => setOffset((prev) => prev + limit)} disabled={isLoading} className="px-8">
-                        Загрузить еще
-                    </Button>
-                </div>
+            {isLoading && items.length === 0 && (
+                <div className="text-center py-8">Загрузка...</div>
             )}
+            {!isLoading && items.length === 0 && (
+                <div className="text-center py-8">Подарки не найдены</div>
+            )}
+
+            <div ref={sentinelRef} className="h-1" />
+
+            <div className="flex items-center justify-center py-6">
+                {isValidating && hasMore && <span className="opacity-80">Подгружаем ещё…</span>}
+                {!isValidating && hasMore && (
+                    <Button onClick={() => setSize(size + 1)} className="ml-0">
+                        Загрузить ещё
+                    </Button>
+                )}
+                {!hasMore && loadedCount > 0 && (
+                    <span className="opacity-60">Это все подарки ({loadedCount})</span>
+                )}
+            </div>
 
             <StepsModal
                 open={showSteps}
