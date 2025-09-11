@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
-import {getBackendHost} from "@/shared/lib/host";
+import { getBackendHost } from "@/shared/lib/host";
 
 type QueueItem = { id: string; label: string; createdAt: number };
 type AnimeEasing = "linear" | "easeOutQuad" | string;
@@ -86,6 +86,9 @@ export function Multipliers({
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
 
     const processed = useRef<Set<number>>(new Set());
+    const lastSeenRoundId = useRef<number>(0);
+    const fetching = useRef(false);
+
     const containerRef = useRef<HTMLDivElement | null>(null);
     const animeRef = useRef<AnimeFn | null>(null);
     const [animeReady, setAnimeReady] = useState(false);
@@ -120,22 +123,41 @@ export function Multipliers({
     useEffect(() => {
         let cancelled = false;
         const host = getBackendHost();
-        const url = `https://${host}/api/game/history`;
+        const base = `https://${host}/api/game/history`;
         async function load() {
+            if (cancelled || fetching.current) return;
+            fetching.current = true;
             try {
+                const url = `${base}?_t=${Date.now()}${lastSeenRoundId.current ? `&after=${lastSeenRoundId.current}` : ""}`;
                 const res = await fetch(url, { cache: "no-store" });
                 if (!res.ok) return;
                 const data: HistoryRow[] = await res.json();
-                if (!cancelled) setHistory(data);
+                const fresh = data.filter((r) => !processed.current.has(r.roundId) && r.roundId > lastSeenRoundId.current);
+                if (fresh.length) {
+                    const maxId = fresh.reduce((m, r) => (r.roundId > m ? r.roundId : m), lastSeenRoundId.current);
+                    lastSeenRoundId.current = maxId;
+                    setHistory((prev) => {
+                        const all = [...prev, ...fresh];
+                        return all.length > queueLimit ? all.slice(-queueLimit) : all;
+                    });
+                }
             } catch {}
+            finally {
+                fetching.current = false;
+            }
         }
         load();
-        const id = window.setInterval(load, 3000);
+        const id = window.setInterval(load, 1500);
+        const onVis = () => {
+            if (!document.hidden) load();
+        };
+        document.addEventListener("visibilitychange", onVis);
         return () => {
             cancelled = true;
             clearInterval(id);
+            document.removeEventListener("visibilitychange", onVis);
         };
-    }, []);
+    }, [queueLimit]);
 
     const incomingItems = useMemo(() => {
         if (resolvedMode === "mock") return [] as QueueItem[];
