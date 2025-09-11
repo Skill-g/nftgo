@@ -1,9 +1,19 @@
-version: '3.9'
+version: "3.9"
+
 services:
-  app:
-    build: .
+  web:
+    image: ${REGISTRY_IMAGE}
+    restart: always
     ports:
       - "3000:3000"
-    restart: always
     environment:
-      NODE_ENV: production
+      NODE_ENV: "production"
+      PORT: "3000"
+      NEXT_PUBLIC_BACKEND_URL: "https://backend.nftgo.site"
+      NEXT_PUBLIC_USE_MOCK_BETS: "0"
+      NEXT_PUBLIC_USE_MOCK_CRUSH: "0"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
