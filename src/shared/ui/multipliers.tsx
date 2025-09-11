@@ -120,7 +120,7 @@ export function Multipliers({
     useEffect(() => {
         let cancelled = false;
         const host = getBackendHost();
-        const url = `${host}/api/game/history`;
+        const url = `https://${host}/api/game/history`;
         async function load() {
             try {
                 const res = await fetch(url, { cache: "no-store" });
