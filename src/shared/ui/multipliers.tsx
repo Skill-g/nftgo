@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
+import {getBackendHost} from "@/shared/lib/host";
 
 type QueueItem = { id: string; label: string; createdAt: number };
 type AnimeEasing = "linear" | "easeOutQuad" | string;
@@ -32,12 +33,18 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 function readMultiplier(v: unknown): number {
-    if (isRecord(v) && typeof v.multiplier === "number") return v.multiplier;
+    if (isRecord(v)) {
+        if (typeof v.multiplier === "number") return v.multiplier;
+        if (typeof v.crashMultiplier === "number") return v.crashMultiplier;
+    }
     return 1;
 }
 
 function readBetId(v: unknown): number | null {
-    if (isRecord(v) && typeof v.betId === "number") return v.betId;
+    if (isRecord(v)) {
+        if (typeof v.betId === "number") return v.betId;
+        if (typeof v.roundId === "number") return v.roundId;
+    }
     return null;
 }
 
@@ -63,6 +70,8 @@ type MultipliersProps = {
     queueLimit?: number;
 };
 
+type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
+
 export function Multipliers({
                                 roundId,
                                 initData,
@@ -86,6 +95,7 @@ export function Multipliers({
 
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [active, setActive] = useState<QueueItem[]>([]);
+    const [history, setHistory] = useState<HistoryRow[]>([]);
 
     const nodeMapRef = useRef(new Map<string, HTMLDivElement | null>());
     const setNodeRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
@@ -108,33 +118,55 @@ export function Multipliers({
     }, []);
 
     useEffect(() => {
-        processed.current.clear();
-    }, [roundId]);
-
-    const realItems = useMemo(() => {
-        if (resolvedMode === "mock") return [] as QueueItem[];
-        const arr: QueueItem[] = [];
-        for (const item of betsReal as unknown as ReadonlyArray<unknown>) {
-            const betId = readBetId(item);
-            if (betId === null) continue;
-            if (processed.current.has(betId)) continue;
-            processed.current.add(betId);
-            const id = `${betId}-${uuidv4()}`;
-            const m = readMultiplier(item);
-            arr.push({ id, label: formatX(m), createdAt: Date.now() });
+        let cancelled = false;
+        const host = getBackendHost();
+        const url = `${host}/api/game/history`;
+        async function load() {
+            try {
+                const res = await fetch(url, { cache: "no-store" });
+                if (!res.ok) return;
+                const data: HistoryRow[] = await res.json();
+                if (!cancelled) setHistory(data);
+            } catch {}
         }
-        return arr;
-    }, [betsReal, resolvedMode]);
+        load();
+        const id = window.setInterval(load, 3000);
+        return () => {
+            cancelled = true;
+            clearInterval(id);
+        };
+    }, []);
+
+    const incomingItems = useMemo(() => {
+        if (resolvedMode === "mock") return [] as QueueItem[];
+        const out: QueueItem[] = [];
+        const now = Date.now();
+        for (const item of betsReal as unknown as ReadonlyArray<unknown>) {
+            const bid = readBetId(item);
+            if (bid === null) continue;
+            if (processed.current.has(bid)) continue;
+            processed.current.add(bid);
+            const m = readMultiplier(item);
+            out.push({ id: `${bid}-${uuidv4()}`, label: formatX(m), createdAt: now });
+        }
+        for (const row of history) {
+            const idNum = row.roundId;
+            if (processed.current.has(idNum)) continue;
+            processed.current.add(idNum);
+            out.push({ id: `${idNum}-${uuidv4()}`, label: formatX(row.crashMultiplier), createdAt: now });
+        }
+        return out;
+    }, [betsReal, history, resolvedMode]);
 
     useEffect(() => {
-        if (!realItems.length) return;
+        if (!incomingItems.length) return;
         setQueue((prev) => {
             const seenIds = new Set([...prev, ...active].map((item) => item.id));
-            const newItems = realItems.filter((item) => !seenIds.has(item.id));
+            const newItems = incomingItems.filter((item) => !seenIds.has(item.id));
             const next = [...prev, ...newItems];
             return next.length > queueLimit ? next.slice(-queueLimit) : next;
         });
-    }, [realItems, queueLimit, active]);
+    }, [incomingItems, queueLimit, active]);
 
     useEffect(() => {
         if (resolvedMode !== "mock" && resolvedMode !== "hybrid") return;
@@ -194,22 +226,17 @@ export function Multipliers({
         const current = active[active.length - 1];
         const el = nodeMapRef.current.get(current.id);
         if (!el) return;
-
         const box = containerRef.current.getBoundingClientRect();
         const pill = el.getBoundingClientRect();
-
         const margin = 12;
         const fromX = -pill.width - margin;
         const toX = box.width + margin;
         const fromY = (containerRef.current.clientHeight - pill.height) / 2;
-
         el.style.opacity = "0";
         el.style.transform = `translate(${fromX}px, ${fromY}px)`;
-
         const baseDuration = 6500;
         const jitter = Math.floor(Math.random() * 1000) - 500;
         const delay = 120 + Math.random() * 240;
-
         animeRef.current({
             targets: el,
             translateX: [fromX, toX],
