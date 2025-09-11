@@ -35,6 +35,8 @@ function readMultiplier(v: unknown): number {
     if (isRecord(v)) {
         if (typeof v.multiplier === "number") return v.multiplier;
         if (typeof v.crashMultiplier === "number") return v.crashMultiplier;
+        if (typeof v.multiplier === "string") return parseFloat(v.multiplier) || 1;
+        if (typeof v.crashMultiplier === "string") return parseFloat(v.crashMultiplier) || 1;
     }
     return 1;
 }
@@ -43,6 +45,8 @@ function readBetId(v: unknown): number | null {
     if (isRecord(v)) {
         if (typeof v.betId === "number") return v.betId;
         if (typeof v.roundId === "number") return v.roundId;
+        if (typeof v.betId === "string") return parseInt(v.betId, 10) || null;
+        if (typeof v.roundId === "string") return parseInt(v.roundId, 10) || null;
     }
     return null;
 }
@@ -131,7 +135,7 @@ export function Multipliers({
                 const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", Pragma: "no-cache" }, signal: controller.signal });
                 if (!res.ok) return;
                 const data: HistoryRow[] = await res.json();
-                if (!Array.isArray(data) || !data.length) return;
+                if (!Array.isArray(data)) return;
                 const sortedByTimeDesc = [...data].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
                 const fresh = sortedByTimeDesc.filter((r) => {
                     const t = Date.parse(r.endTime);
@@ -187,7 +191,8 @@ export function Multipliers({
         if (resolvedMode === "mock") return [] as QueueItem[];
         const out: QueueItem[] = [];
         const now = Date.now();
-        for (const item of betsReal as unknown as ReadonlyArray<unknown>) {
+        const betsArray = Array.isArray(betsReal) ? betsReal : [betsReal];
+        for (const item of betsArray) {
             const bid = readBetId(item);
             if (bid === null) continue;
             if (processed.current.has(bid)) continue;
