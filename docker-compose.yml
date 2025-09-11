@@ -2,8 +2,11 @@ version: "3.9"
 
 services:
   web:
-    image: ${REGISTRY_IMAGE}
-    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nftgo/web:latest
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
