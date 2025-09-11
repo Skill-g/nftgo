@@ -76,7 +76,6 @@ export function Multipliers({
                                 initData,
                                 mode,
                                 maxConcurrent: maxConcurrentProp = 8,
-                                mockRateMs = [200, 400],
                                 queueLimit = 200,
                             }: MultipliersProps) {
     const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
@@ -85,14 +84,13 @@ export function Multipliers({
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
 
     const processed = useRef<Set<number>>(new Set());
-    const lastSeenRoundId = useRef<number>(0);
+    const lastSeenEndTs = useRef<number>(0);
     const fetching = useRef(false);
 
     const containerRef = useRef<HTMLDivElement | null>(null);
     const animeRef = useRef<AnimeFn | null>(null);
     const [animeReady, setAnimeReady] = useState(false);
     const rafId = useRef<number | null>(null);
-    const timers = useRef<number[]>([]);
     const gcTimer = useRef<number | null>(null);
     const maxConcurrent = maxConcurrentProp;
 
@@ -130,18 +128,18 @@ export function Multipliers({
             fetching.current = true;
             try {
                 const url = `${base}?_=${Date.now()}`;
-                const res = await fetch(url, {
-                    cache: "no-store",
-                    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-                    signal: controller.signal,
-                });
+                const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", Pragma: "no-cache" }, signal: controller.signal });
                 if (!res.ok) return;
                 const data: HistoryRow[] = await res.json();
                 if (!Array.isArray(data) || !data.length) return;
-                const sorted = [...data].sort((a, b) => a.roundId - b.roundId);
-                const fresh = sorted.filter((r) => r.roundId > lastSeenRoundId.current && !processed.current.has(r.roundId));
+                const sortedByTimeDesc = [...data].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
+                const fresh = sortedByTimeDesc.filter((r) => {
+                    const t = Date.parse(r.endTime);
+                    return t > lastSeenEndTs.current && !processed.current.has(r.roundId);
+                });
                 if (fresh.length) {
-                    lastSeenRoundId.current = Math.max(lastSeenRoundId.current, fresh[fresh.length - 1].roundId);
+                    const maxTs = fresh.reduce((m, r) => Math.max(m, Date.parse(r.endTime)), lastSeenEndTs.current);
+                    lastSeenEndTs.current = maxTs;
                     setHistory((prev) => {
                         const all = [...prev, ...fresh];
                         return all.length > queueLimit ? all.slice(-queueLimit) : all;
@@ -152,15 +150,12 @@ export function Multipliers({
                 fetching.current = false;
             }
         }
-        function kick() {
-            load();
-        }
         load();
         const id = window.setInterval(load, 1000);
         const onVis = () => {
-            if (!document.hidden) kick();
+            if (!document.hidden) load();
         };
-        const onFocus = () => kick();
+        const onFocus = () => load();
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
         return () => {
@@ -200,7 +195,8 @@ export function Multipliers({
             const m = readMultiplier(item);
             out.push({ id: `${bid}-${uuidv4()}`, label: formatX(m), createdAt: now });
         }
-        for (const row of history) {
+        const sortedHistoryDesc = [...history].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
+        for (const row of sortedHistoryDesc) {
             const idNum = row.roundId;
             if (processed.current.has(idNum)) continue;
             processed.current.add(idNum);
@@ -214,43 +210,10 @@ export function Multipliers({
         setQueue((prev) => {
             const seenIds = new Set([...prev, ...active].map((item) => item.id));
             const newItems = incomingItems.filter((item) => !seenIds.has(item.id));
-            const next = [...prev, ...newItems];
-            return next.length > queueLimit ? next.slice(-queueLimit) : next;
+            const next = [...newItems, ...prev].slice(0, queueLimit);
+            return next;
         });
     }, [incomingItems, queueLimit, active]);
-
-    useEffect(() => {
-        if (resolvedMode !== "mock" && resolvedMode !== "hybrid") return;
-        let cancelled = false;
-        const tick = () => {
-            if (cancelled) return;
-            setQueue((prev) => {
-                const need = Math.max(0, maxConcurrent * 2 - prev.length);
-                if (need === 0) return prev;
-                const seenIds = new Set([...prev, ...active].map((item) => item.id));
-                const batch: QueueItem[] = [];
-                for (let i = 0; i < need; i++) {
-                    const id = uuidv4();
-                    if (!seenIds.has(id)) {
-                        seenIds.add(id);
-                        batch.push({ id, label: formatX(randomMultiplier()), createdAt: Date.now() });
-                    }
-                }
-                const next = [...prev, ...batch];
-                return next.length > queueLimit ? next.slice(-queueLimit) : next;
-            });
-            const [a, b] = mockRateMs;
-            const delay = a + Math.random() * Math.max(0, b - a);
-            const t = window.setTimeout(tick, delay);
-            timers.current.push(t);
-        };
-        tick();
-        return () => {
-            cancelled = true;
-            timers.current.forEach((t) => clearTimeout(t));
-            timers.current = [];
-        };
-    }, [maxConcurrent, queueLimit, mockRateMs, active, resolvedMode]);
 
     useEffect(() => {
         if (!containerRef.current || !queue.length || active.length >= maxConcurrent) return;
