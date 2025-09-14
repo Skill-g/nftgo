@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/button'
 import { useState, startTransition } from 'react'
 import { useUserContext } from '@/shared/context/UserContext'
 import { usePathname, useRouter } from 'next/navigation'
+import { activate } from '@/i18n'
 
 function swapLocaleInPath(pathname: string, next: 'ru' | 'en') {
     const parts = pathname.split('/')
@@ -19,16 +20,22 @@ function swapLocaleInPath(pathname: string, next: 'ru' | 'en') {
 export function LanguageSelection() {
     const { user, setPreferredLanguage } = useUserContext()
     const [saving, setSaving] = useState<null | 'ru' | 'en'>(null)
+    const [optimistic, setOptimistic] = useState<'ru' | 'en' | null>(null)
     const pathname = usePathname() || '/'
     const router = useRouter()
 
-    const selected = user?.languageCode === 'ru' ? 'russian' : 'english'
+    const current = optimistic ?? user?.languageCode ?? 'ru'
+    const selected = current === 'ru' ? 'russian' : 'english'
 
     const handleClick = async (lang: 'ru' | 'en') => {
         if (!user) return
         try {
             setSaving(lang)
-            await setPreferredLanguage(lang)
+            setOptimistic(lang)
+            try {
+                localStorage.setItem('locale', lang)
+            } catch {}
+            activate(lang)
             try {
                 await fetch('/api/locale', {
                     method: 'POST',
@@ -37,6 +44,7 @@ export function LanguageSelection() {
                     keepalive: true,
                 })
             } catch {}
+            await setPreferredLanguage(lang)
             const nextPath = swapLocaleInPath(pathname, lang)
             startTransition(() => {
                 router.replace(nextPath)
