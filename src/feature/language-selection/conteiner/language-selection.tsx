@@ -29,22 +29,14 @@ export function LanguageSelection() {
 
     const handleClick = async (lang: 'ru' | 'en') => {
         if (!user) return
+        setSaving(lang)
+        setOptimistic(lang)
         try {
-            setSaving(lang)
-            setOptimistic(lang)
             try {
                 localStorage.setItem('locale', lang)
             } catch {}
             activate(lang)
-            try {
-                await fetch('/api/locale', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lang }),
-                    keepalive: true,
-                })
-            } catch {}
-            await setPreferredLanguage(lang)
+            void setPreferredLanguage(lang)
             const nextPath = swapLocaleInPath(pathname, lang)
             startTransition(() => {
                 router.replace(nextPath)

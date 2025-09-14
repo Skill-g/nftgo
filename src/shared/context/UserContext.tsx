@@ -33,7 +33,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             try {
                 const authed = await authWithBackend(initData);
                 setUser({ ...authed, initData });
-
                 const summary = await referralSummaryCached(initData);
                 setReferralData(summary);
             } catch (err: unknown) {
@@ -47,7 +46,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const setPreferredLanguage = useCallback(
         async (lang: "ru" | "en") => {
             if (!user?.initData) throw new Error("initData is missing");
-
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/user/language`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -57,17 +55,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 const text = await res.text().catch(() => "");
                 throw new Error(text || "Failed to update language");
             }
-
-            try {
-                localStorage.setItem('locale', lang);
-                void fetch('/api/locale', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lang }),
-                    keepalive: true,
-                });
-            } catch {}
-
+            try { localStorage.setItem('locale', lang) } catch {}
             setUser(prev => (prev ? { ...prev, languageCode: lang } : prev));
         },
         [user?.initData]
