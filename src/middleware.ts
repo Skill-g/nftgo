@@ -1,26 +1,31 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-const PUBLIC_FILE = /\.(.*)$/
-const LOCALES = ['ru','en']
+const LOCALES = ['ru', 'en'] as const
 
 export function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
 
     if (
-        PUBLIC_FILE.test(pathname) ||
+        pathname.startsWith('/_next') ||
         pathname.startsWith('/api') ||
-        pathname.startsWith('/_next')
-    ) return
+        pathname.includes('.') ||
+        pathname === '/favicon.ico'
+    ) {
+        return NextResponse.next()
+    }
 
-    const hasLocale = LOCALES.some(l => pathname === `/${l}` || pathname.startsWith(`/${l}/`))
-    if (!hasLocale) {
+    const seg = pathname.split('/')[1]
+    if (!LOCALES.includes(seg as any)) {
+        const cookieLocale = req.cookies.get('locale')?.value as 'ru' | 'en' | undefined
+        const preferred = cookieLocale ?? 'ru'
         const url = req.nextUrl.clone()
-        url.pathname = `/ru${pathname}`
+        url.pathname = `/${preferred}${pathname.startsWith('/') ? '' : '/'}${pathname}`
         return NextResponse.redirect(url)
     }
+
+    return NextResponse.next()
 }
 
 export const config = {
-    matcher: ['/((?!_next|api|favicon.ico|robots.txt|sitemap.xml|assets).*)'],
+    matcher: ['/((?!.*\\.).*)'],
 }

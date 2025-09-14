@@ -223,7 +223,7 @@ export function BetHistory({
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-white font-medium truncate"><Trans>Раунд</Trans>{bet.roundId ?? "—"}</span>
+                                        <span className="text-white font-medium truncate"><Trans>Раунд:</Trans>{bet.roundId ?? "—"}</span>
                                         <StatusBadge label={badgeLabel} kind={badgeKind} />
                                         {bet.isOrphaned ? (
                                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30"><Trans>orphaned</Trans></span>

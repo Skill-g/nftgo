@@ -1,12 +1,11 @@
 'use client'
 
-import { Trans, t } from '@lingui/macro'
+import { Trans } from '@lingui/macro'
 import { Card } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
-import { useState } from 'react'
+import { useState, startTransition } from 'react'
 import { useUserContext } from '@/shared/context/UserContext'
 import { usePathname, useRouter } from 'next/navigation'
-import { activate } from '@/i18n'
 
 function swapLocaleInPath(pathname: string, next: 'ru' | 'en') {
     const parts = pathname.split('/')
@@ -20,7 +19,7 @@ function swapLocaleInPath(pathname: string, next: 'ru' | 'en') {
 export function LanguageSelection() {
     const { user, setPreferredLanguage } = useUserContext()
     const [saving, setSaving] = useState<null | 'ru' | 'en'>(null)
-    const pathname = usePathname()
+    const pathname = usePathname() || '/'
     const router = useRouter()
 
     const selected = user?.languageCode === 'ru' ? 'russian' : 'english'
@@ -31,11 +30,18 @@ export function LanguageSelection() {
             setSaving(lang)
             await setPreferredLanguage(lang)
             try {
-                await fetch('/api/locale', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lang }) })
+                await fetch('/api/locale', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lang }),
+                    keepalive: true,
+                })
             } catch {}
-            activate(lang)
-            const nextPath = swapLocaleInPath(pathname || '/', lang)
-            router.replace(nextPath)
+            const nextPath = swapLocaleInPath(pathname, lang)
+            startTransition(() => {
+                router.replace(nextPath)
+                router.refresh()
+            })
         } finally {
             setSaving(null)
         }

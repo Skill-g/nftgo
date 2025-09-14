@@ -1,5 +1,5 @@
 "use client";
-import { Trans, t } from '@lingui/macro';
+import { Trans } from '@lingui/macro';
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authWithBackend } from "@/feature/auth/authWithBackend";
 
@@ -17,12 +17,7 @@ type TelegramUser = {
 type ReferralSummary = {
     totalReferrals: number;
     referralBalance: number;
-    invited: Array<{
-        userId: number;
-        usernameMasked: string;
-        profit: number;
-        avatarUrl?: string;
-    }>;
+    invited: Array<{ userId: number; usernameMasked: string; profit: number; avatarUrl?: string; }>;
 };
 
 type UserContextType = {
@@ -48,33 +43,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
             return;
         }
-
-        const fetchUserAndReferralData = async () => {
+        (async () => {
             try {
                 const authedUser = await authWithBackend(initData);
                 setUser({ ...authedUser, initData });
-
                 const referralResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/referral/summary`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ initData }),
                 });
-
                 if (!referralResponse.ok) throw new Error("Failed to fetch referral summary");
                 const referralJson = await referralResponse.json();
                 setReferralData(referralJson);
             } catch (err: unknown) {
-                if (err instanceof Error) {
-                    setError(err);
-                } else {
-                    setError(new Error("Unknown error"));
-                }
+                setError(err instanceof Error ? err : new Error("Unknown error"));
             } finally {
                 setLoading(false);
             }
-        };
-
-        fetchUserAndReferralData();
+        })();
     }, []);
 
     const setPreferredLanguage = useCallback(
@@ -84,29 +70,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/user/language`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    initData: user.initData,
-                    language: lang,
-                }),
+                body: JSON.stringify({ initData: user.initData, language: lang }),
             });
-
             if (!res.ok) {
                 const text = await res.text().catch(() => "");
                 throw new Error(text || "Failed to update language");
             }
 
-            setUser((prev) => (prev ? { ...prev, languageCode: lang } : prev));
+            try {
+                localStorage.setItem('locale', lang);
+                void fetch('/api/locale', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lang }),
+                    keepalive: true,
+                });
+            } catch {}
+
+            setUser(prev => (prev ? { ...prev, languageCode: lang } : prev));
         },
         [user?.initData]
     );
 
-    if (loading) {
-        return <div className="text-white text-center"></div>;
-    }
-
-    if (error) {
-        return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans>{error.message}</div>;
-    }
+    if (loading) return <div className="text-white text-center"></div>;
+    if (error) return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans>{error.message}</div>;
 
     return (
         <UserContext.Provider value={{ user, referralData, loading, error, setPreferredLanguage }}>
@@ -116,9 +103,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useUserContext = () => {
-    const context = useContext(UserContext);
-    if (context === undefined) {
-        throw new Error("useUserContext must be used within a UserProvider");
-    }
-    return context;
+    const ctx = useContext(UserContext);
+    if (!ctx) throw new Error("useUserContext must be used within a UserProvider");
+    return ctx;
 };
