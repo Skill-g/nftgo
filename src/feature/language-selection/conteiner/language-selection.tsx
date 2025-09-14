@@ -3,10 +3,14 @@
 import { Trans } from '@lingui/macro'
 import { Card } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
-import { useState, startTransition } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { useUserContext } from '@/shared/context/UserContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { activate } from '@/i18n'
+
+function isLang(v: unknown): v is 'ru' | 'en' {
+    return v === 'ru' || v === 'en'
+}
 
 function swapLocaleInPath(pathname: string, next: 'ru' | 'en') {
     const parts = pathname.split('/')
@@ -20,23 +24,32 @@ function swapLocaleInPath(pathname: string, next: 'ru' | 'en') {
 export function LanguageSelection() {
     const { user, setPreferredLanguage } = useUserContext()
     const [saving, setSaving] = useState<null | 'ru' | 'en'>(null)
-    const [optimistic, setOptimistic] = useState<'ru' | 'en' | null>(null)
+    const [uiLang, setUiLang] = useState<'ru' | 'en'>('ru')
     const pathname = usePathname() || '/'
     const router = useRouter()
 
-    const current = optimistic ?? user?.languageCode ?? 'ru'
-    const selected = current === 'ru' ? 'russian' : 'english'
+    useEffect(() => {
+        let initial: 'ru' | 'en' = 'ru'
+        try {
+            const ls = localStorage.getItem('locale')
+            if (isLang(ls)) initial = ls
+        } catch {}
+        setUiLang(initial)
+    }, [])
+
+    const selected = uiLang === 'ru' ? 'russian' : 'english'
 
     const handleClick = async (lang: 'ru' | 'en') => {
-        if (!user) return
         setSaving(lang)
-        setOptimistic(lang)
+        setUiLang(lang)
         try {
             try {
                 localStorage.setItem('locale', lang)
             } catch {}
             activate(lang)
-            void setPreferredLanguage(lang)
+            if (user) {
+                void setPreferredLanguage(lang)
+            }
             const nextPath = swapLocaleInPath(pathname, lang)
             startTransition(() => {
                 router.replace(nextPath)
