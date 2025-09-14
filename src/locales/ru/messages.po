@@ -1,0 +1,379 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2025-09-14 17:56+0500\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: ru\n"
+
+#: src/feature/gift-list/giftList.tsx:170
+msgid "@giftrelayer"
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:161
+msgid "@Tonnel_Network_bot"
+msgstr ""
+
+#: src/shared/ui/news-banner.tsx:20
+msgid "•"
+msgstr ""
+
+#: src/feature/friends-list/ui/friend-card.tsx:20
+msgid "A"
+msgstr ""
+
+#: src/feature/deposit/ui/deposit-input.tsx:15
+msgid "Amount (Min: 0.1 TON)"
+msgstr ""
+
+#: src/shared/ui/news-banner.tsx:13
+msgid "Check our news"
+msgstr ""
+
+#: src/shared/ui/header/header.tsx:86
+msgid "Connect Wallet"
+msgstr ""
+
+#: src/feature/deposit/ui/payment-method.tsx:30
+msgid "CryptoBot"
+msgstr ""
+
+#: src/feature/marathonTime/ui/timer.tsx:8
+msgid "Day"
+msgstr ""
+
+#: src/feature/deposit/ui/deposit-header.tsx:17
+msgid "Deposit"
+msgstr ""
+
+#: src/feature/deposit/ui/payment-method.tsx:29
+msgid "deposit-2"
+msgstr ""
+
+#: src/shared/ui/header/header.tsx:83
+msgid "Disconnect"
+msgstr ""
+
+#: src/feature/code-modal/conteinter/code-modal.tsx:109
+msgid "Enter promo-code..."
+msgstr ""
+
+#: src/feature/code-modal/conteinter/code-modal.tsx:107
+msgid "Enter promotional code"
+msgstr ""
+
+#: src/feature/friends-list/conteiner/friends-list.tsx:10
+#: src/feature/referral-balance/conteiner/referral-balance.tsx:9
+msgid "Error:"
+msgstr ""
+
+#: src/feature/filter/ui/search-bar.tsx:11
+msgid "Find your gift..."
+msgstr ""
+
+#: src/feature/bottom-nav/container/bottom-nav.tsx:12
+msgid "Friends"
+msgstr ""
+
+#: src/feature/leaderboard/ui/board-item.tsx:26
+msgid "games"
+msgstr ""
+
+#: src/feature/marathonTime/ui/timer.tsx:12
+msgid "Hours"
+msgstr ""
+
+#: src/feature/friends-list/conteiner/friends-list.tsx:14
+msgid "Invited ("
+msgstr ""
+
+#: src/shared/ui/news-banner.tsx:19
+msgid "Live"
+msgstr ""
+
+#: src/shared/ui/header/header.tsx:45
+msgid "Loading..."
+msgstr ""
+
+#: src/shared/ui/header/header.tsx:28
+#: src/shared/ui/header/header.tsx:59
+msgid "logo"
+msgstr ""
+
+#: src/feature/bottom-nav/container/bottom-nav.tsx:9
+msgid "Market"
+msgstr ""
+
+#: src/feature/marathonTime/ui/timer.tsx:16
+msgid "Minutes"
+msgstr ""
+
+#: src/shared/ui/multipliers.tsx:289
+msgid "multipliers-stream"
+msgstr ""
+
+#: src/feature/grid/ui/nft-card.tsx:32
+#: src/feature/reward-section/ui/reward-item.tsx:16
+msgid "nft"
+msgstr ""
+
+#: src/app/friends/page.tsx:92
+msgid "nft go logo"
+msgstr ""
+
+#: src/feature/leaderboard/conteiner/leaderboard.tsx:108
+msgid "No data yet"
+msgstr ""
+
+#: src/shared/ui/info-banner.tsx:8
+msgid "Only Scratch games are counted for this Raffle"
+msgstr ""
+
+#: src/shared/ui/news-banner.tsx:14
+msgid "Open"
+msgstr ""
+
+#: src/feature/bet-history/BetHistory.tsx:229
+msgid "orphaned"
+msgstr ""
+
+#: src/feature/marathonTime/ui/title.tsx:9
+msgid "PEPE Marathon"
+msgstr ""
+
+#: src/feature/leaderboard/ui/thead.tsx:7
+msgid "Place"
+msgstr ""
+
+#: src/feature/leaderboard/ui/board-item.tsx:26
+msgid "Played"
+msgstr ""
+
+#: src/feature/bottom-nav/container/bottom-nav.tsx:13
+msgid "Profile"
+msgstr ""
+
+#: src/feature/code-modal/conteinter/code-modal.tsx:125
+msgid "promo"
+msgstr ""
+
+#: src/feature/referral-balance/conteiner/referral-balance.tsx:15
+msgid "Referral balance"
+msgstr ""
+
+#: src/feature/reward-section/ui/reward-info.tsx:4
+msgid "Rewards scheduled for June 1 at 00:00 (UTC)"
+msgstr ""
+
+#: src/shared/ui/gameArea/game-area.tsx:187
+msgid "rocket"
+msgstr ""
+
+#: src/feature/bottom-nav/container/bottom-nav.tsx:11
+msgid "Rocket"
+msgstr ""
+
+#: src/shared/ui/gameArea/game-area.tsx:217
+msgid "runner"
+msgstr ""
+
+#: src/feature/marathonTime/ui/timer.tsx:20
+msgid "Seconds"
+msgstr ""
+
+#: src/feature/deposit/ui/deposit-header.tsx:18
+msgid "Select the method of deposit"
+msgstr ""
+
+#: src/shared/ui/banner.tsx:8
+msgid "Ticket"
+msgstr ""
+
+#: src/feature/betting-section/ui/bet-control.tsx:55
+#: src/feature/deposit/ui/payment-method.tsx:20
+msgid "TON"
+msgstr ""
+
+#: src/feature/friends-list/ui/friend-card.tsx:27
+#: src/feature/gift-list/ui/gift-card.tsx:29
+#: src/feature/gift-list/ui/gift-card.tsx:41
+#: src/feature/grid/ui/nft-card.tsx:25
+#: src/feature/leaderboard/ui/board-item.tsx:31
+#: src/feature/players-list/ui/player.tsx:26
+msgid "ton coin"
+msgstr ""
+
+#: src/feature/filter/ui/filter-bar.tsx:65
+#: src/feature/referral-balance/conteiner/referral-balance.tsx:18
+#: src/shared/ui/header/header.tsx:33
+#: src/shared/ui/header/header.tsx:65
+msgid "ton Coin"
+msgstr ""
+
+#: src/feature/deposit/ui/payment-method.tsx:19
+msgid "tonCoin"
+msgstr ""
+
+#: src/feature/bottom-nav/container/bottom-nav.tsx:10
+msgid "Top"
+msgstr ""
+
+#: src/feature/leaderboard/ui/thead.tsx:10
+msgid "Turnover"
+msgstr ""
+
+#: src/feature/leaderboard/ui/thead.tsx:8
+msgid "User"
+msgstr ""
+
+#: src/feature/user-profile/conteiner/user-profile.tsx:34
+msgid "User ID:"
+msgstr ""
+
+#: src/shared/ui/gameArea/game-area.tsx:197
+msgid "x"
+msgstr ""
+
+#: src/app/friends/page.tsx:98
+msgid "Активировать промокод"
+msgstr ""
+
+#: src/feature/betting-section/ui/bet-tabs.tsx:15
+msgid "Баланс"
+msgstr ""
+
+#: src/app/friends/page.tsx:89
+msgid "вашего друга"
+msgstr ""
+
+#: src/feature/betting-section/conteiner/betting-section.tsx:39
+msgid "Выбрать тип ставки"
+msgstr ""
+
+#: src/feature/language-selection/conteiner/language-selection.tsx:29
+msgid "Выбрать язык"
+msgstr ""
+
+#: src/feature/bet-history/BetHistory.tsx:238
+msgid "Выигрыш:"
+msgstr ""
+
+#: src/feature/grid/conteiner/nft-list.tsx:38
+msgid "Забрать"
+msgstr ""
+
+#: src/feature/betting-section/ui/bet-control.tsx:56
+msgid "ЗАБРАТЬ"
+msgstr ""
+
+#: src/feature/user-profile/conteiner/user-profile.tsx:11
+msgid "Загрузка профиля..."
+msgstr ""
+
+#: src/app/friends/page.tsx:77
+#: src/feature/friends-list/conteiner/friends-list.tsx:9
+#: src/feature/gift-list/giftList.tsx:393
+#: src/feature/referral-balance/conteiner/referral-balance.tsx:8
+msgid "Загрузка..."
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:139
+#: src/shared/ui/steps-modal.tsx:57
+msgid "Закрыть"
+msgstr ""
+
+#: src/shared/ui/toast.tsx:138
+msgid "Закрыть уведомление"
+msgstr ""
+
+#: src/app/profile/page.tsx:12
+#: src/feature/betting-section/ui/bet-tabs.tsx:23
+msgid "Инвентарь"
+msgstr ""
+
+#: src/app/profile/page.tsx:15
+msgid "История игр"
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:138
+msgid "Как купить подарок?"
+msgstr ""
+
+#: src/shared/ui/steps-modal.tsx:53
+msgid "Как получить подарок"
+msgstr ""
+
+#: src/shared/ui/gameArea/game-area.tsx:189
+msgid "ОЖИДАНИЕ"
+msgstr ""
+
+#: src/shared/ui/toast.tsx:126
+msgid "Открыть"
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:167
+msgid "Открыть @giftrelayer"
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:158
+msgid "Открыть @Tonnel_Network_bot"
+msgstr ""
+
+#: src/feature/user-profile/conteiner/user-profile.tsx:19
+msgid "Ошибка Авторизации"
+msgstr ""
+
+#: src/app/friends/page.tsx:81
+#: src/feature/bet-history/BetHistory.tsx:188
+#: src/shared/context/UserContext.tsx:108
+msgid "Ошибка:"
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:396
+msgid "Подарки не найдены"
+msgstr ""
+
+#: src/feature/players-list/conteiner/players-list.tsx:28
+msgid "Пока нет ставок в этом раунде."
+msgstr ""
+
+#: src/feature/bet-history/BetHistory.tsx:192
+msgid "Пока нет ставок."
+msgstr ""
+
+#: src/app/friends/page.tsx:89
+msgid "Получи 10% от депозита"
+msgstr ""
+
+#: src/app/friends/page.tsx:105
+msgid "Пригласить друга"
+msgstr ""
+
+#: src/feature/grid/conteiner/nft-list.tsx:44
+msgid "Продать"
+msgstr ""
+
+#: src/feature/bet-history/BetHistory.tsx:226
+msgid "Раунд"
+msgstr ""
+
+#: src/shared/ui/toast.tsx:101
+msgid "Скопировать тег"
+msgstr ""
+
+#: src/shared/ui/toast.tsx:113
+msgid "Скопировать текст"
+msgstr ""
+
+#: src/feature/bet-history/BetHistory.tsx:236
+msgid "Ставка:"
+msgstr ""
+
+#: src/shared/ui/gameArea/game-area.tsx:200
+msgid "УБЕЖАЛ"
+msgstr ""
+
+#: src/feature/gift-list/giftList.tsx:400
+msgid "Это все подарки ("
+msgstr ""

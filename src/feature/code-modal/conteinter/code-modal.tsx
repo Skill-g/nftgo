@@ -1,5 +1,5 @@
-"use client"
-
+"use client";
+import { Trans, t } from '@lingui/macro';
 import {Button} from "@/shared/ui/button"
 import {Input} from "@/shared/ui/input"
 import {X} from "lucide-react"
@@ -7,7 +7,6 @@ import {useMemo, useState} from "react"
 import Image from "next/image"
 import {useUserContext} from "@/shared/context/UserContext"
 import { useBalance } from "@/shared/hooks/useBalance"
-
 type Status = "idle" | "valid" | "invalid"
 
 type PromoRedeemResponse = {
@@ -105,9 +104,9 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
                 </Button>
 
                 <div className="text-center mb-8">
-                    <h2 className="text-xl font-semibold text-white mb-6">Enter promotional code</h2>
+                    <h2 className="text-xl font-semibold text-white mb-6"><Trans>Enter promotional code</Trans></h2>
                     <Input
-                        placeholder="Enter promo-code..."
+                        placeholder={t`Enter promo-code...`}
                         value={promoCode}
                         onChange={(e) => { setPromoCode(e.target.value); if (status !== "idle") setStatus("idle") }}
                         onKeyDown={(e) => { if (e.key === "Enter") redeem() }}
@@ -123,9 +122,9 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
                 </div>
 
                 <div className="flex items-center justify-center gap-2 mt-8">
-                    <Image src="/promo.png" width={66} height={48} alt="promo" />
+                    <Image src="/promo.png" width={66} height={48} alt={t`promo`} />
                 </div>
             </div>
         </div>
-    )
+    );
 }

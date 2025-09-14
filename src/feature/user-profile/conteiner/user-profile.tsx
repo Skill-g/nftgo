@@ -1,3 +1,4 @@
+import { Trans, t } from '@lingui/macro';
 import { Layout } from "@/feature/user-profile/conteiner/layout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/ui/avatar";
 import { useUserContext } from "@/shared/context/UserContext";
@@ -7,7 +8,7 @@ export function UserProfile() {
     if (loading) {
         return (
             <Layout>
-                <div className="text-white text-xl">Загрузка профиля...</div>
+                <div className="text-white text-xl"><Trans>Загрузка профиля...</Trans></div>
             </Layout>
         );
     }
@@ -15,7 +16,7 @@ export function UserProfile() {
     if (error || !user) {
         return (
             <Layout>
-                <div className="text-red-400 text-xl text-center w-full">Ошибка Авторизации</div>
+                <div className="text-red-400 text-xl text-center w-full"><Trans>Ошибка Авторизации</Trans></div>
             </Layout>
         );
     }
@@ -30,7 +31,7 @@ export function UserProfile() {
             </div>
             <div>
                 <h1 className="text-2xl font-bold text-white mb-1">{user.firstName}</h1>
-                <p className="text-[#c2c2c2] text-lg">User ID: {user.id}</p>
+                <p className="text-[#c2c2c2] text-lg"><Trans>User ID:</Trans>{user.id}</p>
                 {user.username && (
                     <p className="text-[#aaa] text-md">@{user.username}</p>
                 )}

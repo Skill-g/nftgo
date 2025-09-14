@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { Player } from "@/feature/players-list/ui/player";
 import { useUserContext } from "@/shared/context/UserContext";
 import { useGame } from "@/shared/hooks/useGame";
@@ -20,12 +20,16 @@ export function PlayersList() {
     return (
         <div className="space-y-3 mb-6">
             <div className="mt-4 text-[#969696] text-sm">
-                {error ? "Не удалось загрузить ставки" : loading ? "Загружаем ставки…" : `Всего ставок: ${totalBets}`}
+                {error
+                    ? <Trans>Не удалось загрузить ставки</Trans>
+                    : loading
+                        ? <Trans>Загружаем ставки…</Trans>
+                        : <Trans>Всего ставок: {totalBets}</Trans>}
             </div>
             {(bets.length ? bets : []).slice(0, 50).map((b) => (
                 <Player key={b.betId} name={maskUser(b.userId, b.usernameMasked)} bet={b.amount} avatarUrl={b.avatarUrl} />
             ))}
-            {!loading && !error && bets.length === 0 && <div className="text-[#969696] text-sm text-center">Пока нет ставок в этом раунде.</div>}
+            {!loading && !error && bets.length === 0 && <div className="text-[#969696] text-sm text-center"><Trans>Пока нет ставок в этом раунде.</Trans></div>}
         </div>
     );
 }

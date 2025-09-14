@@ -1,12 +1,11 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
 import { useGame } from "@/shared/hooks/useGame";
 import { motion, AnimatePresence } from "framer-motion";
-
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_CRUSH === "1";
 
 type GameAreaProps = {
@@ -185,9 +184,9 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                 {!isActive && (
                     <>
                         <div>
-                            <Image src={"/rocket/rocket.png"} alt={"rocket"} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
+                            <Image src={"/rocket/rocket.png"} alt={t`rocket`} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
                         </div>
-                        <h2 className="text-xl font-bold">ОЖИДАНИЕ</h2>
+                        <h2 className="text-xl font-bold"><Trans>ОЖИДАНИЕ</Trans></h2>
                         <AnimatedSeconds seconds={remainingSec} />
                     </>
                 )}
@@ -195,13 +194,10 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                 {isActive && (
                     <div ref={trackRef} className="relative w-full mt-12" style={{ height: 128, minHeight: 128, marginBottom: 16 }}>
                         <div className="absolute left-0 w-full flex justify-center" style={{ top: 0, zIndex: 10, pointerEvents: "none" }}>
-              <span className="text-2xl font-bold select-none" style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}>
-                x{state.multiplier.toFixed(2)}
+              <span className="text-2xl font-bold select-none" style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}><Trans>x</Trans>{state.multiplier.toFixed(2)}
                   {state.phase === "crashed" && (
                       <span className="mt-2 text-white">
-                    <br />
-                    УБЕЖАЛ
-                  </span>
+                    <br /><Trans>УБЕЖАЛ</Trans></span>
                   )}
               </span>
                         </div>
@@ -218,7 +214,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                         >
                             <Image
                                 src={"/rocket/begu.gif"}
-                                alt="runner"
+                                alt={t`runner`}
                                 width={64}
                                 height={64}
                                 style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }}

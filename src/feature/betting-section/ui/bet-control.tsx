@@ -1,9 +1,10 @@
+import { Trans, t } from '@lingui/macro';
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { Deposit } from "@/feature/deposit";
-import { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from 'react'
 
 type BetControlProps = {
     presetAmounts: number[];
@@ -36,23 +37,24 @@ export function BetControl({
         winSum = Math.floor(betAmount1 * multiplier);
     }
 
-    let buttonContent: ReactNode = "СТАВИТЬ";
-    let buttonClass = "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white";
-    let buttonDisabled = false;
-    let buttonOnClick: (() => void) | undefined = onPlaceBet;
+    let buttonContent: React.ReactNode = t`СТАВИТЬ`
+    let buttonClass = "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white"
+    let buttonDisabled = false
+    let buttonOnClick: (() => void) | undefined = onPlaceBet
 
     if (placed && waiting) {
-        buttonContent = "ОЖИДАНИЕ";
-        buttonClass = "bg-[#1B1636] text-white";
-        buttonDisabled = true;
-        buttonOnClick = undefined;
+        buttonContent = t`ОЖИДАНИЕ`
+        buttonClass = "bg-[#1B1636] text-white"
+        buttonDisabled = true
+        buttonOnClick = undefined
     }
+
 
     if (placed && !waiting) {
         buttonContent = (
             <div className="flex flex-col items-center leading-tight">
-                <span className="text-lg font-bold mb-1 text-white">{winSum} TON</span>
-                <span className="text-white">ЗАБРАТЬ</span>
+                <span className="text-lg font-bold mb-1 text-white">{winSum}<Trans>TON</Trans></span>
+                <span className="text-white"><Trans>ЗАБРАТЬ</Trans></span>
             </div>
         );
         buttonClass = "text-black";
@@ -64,10 +66,10 @@ export function BetControl({
     }
 
     if (!placed && isActive) {
-        buttonContent = "СТАВКИ ЗАКРЫТЫ";
-        buttonClass = "bg-[#1B1636] text-[#969696]";
-        buttonDisabled = true;
-        buttonOnClick = undefined;
+        buttonContent = t`СТАВКИ ЗАКРЫТЫ`
+        buttonClass = "bg-[#1B1636] text-[#969696]"
+        buttonDisabled = true
+        buttonOnClick = undefined
     }
 
     const controlsDisabled = placed || (!placed && isActive);

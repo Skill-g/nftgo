@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import Image from "next/image";
 
@@ -23,7 +23,7 @@ export function Player({ name, bet, avatarUrl }: { name: string; bet: number; av
             <div className="flex items-center gap-2">
                 <span className="text-white font-bold">{bet}</span>
                 <div className="w-6 h-6 rounded-full flex items-center justify-center">
-                    <Image src={"/tonCoin.svg"} alt={"ton coin"} width={20} height={20} />
+                    <Image src={"/tonCoin.svg"} alt={t`ton coin`} width={20} height={20} />
                 </div>
             </div>
         </div>

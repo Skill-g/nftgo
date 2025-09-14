@@ -1,5 +1,5 @@
-"use client"
-
+"use client";
+import { Trans, t } from '@lingui/macro';
 import {useEffect, useMemo, useState} from "react"
 import {BoardItem} from "@/feature/leaderboard/ui/board-item"
 import {Thead} from "@/shared/ui/thead"
@@ -105,9 +105,9 @@ export function Leaderboard() {
         return (
             <div className="space-y-3 mb-20">
                 <Thead fTitle={'Place'} sTitle={'User'} tTitle={'Turnover'}/>
-                <div className="text-white/70 text-center">No data yet</div>
+                <div className="text-white/70 text-center"><Trans>No data yet</Trans></div>
             </div>
-        )
+        );
     }
 
     return (

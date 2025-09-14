@@ -1,3 +1,4 @@
+import { Trans, t } from '@lingui/macro';
 import {Avatar, AvatarFallback, AvatarImage} from "@/shared/ui/avatar"
 import Image from "next/image"
 
@@ -22,15 +23,15 @@ export function BoardItem({player}: {player: PlayerProps}) {
                 </Avatar>
                 <div>
                     <div className="text-white font-semibold">{player.name}</div>
-                    <div className="text-white/80 text-sm">Played {player.games} games</div>
+                    <div className="text-white/80 text-sm"><Trans>Played</Trans>{player.games}<Trans>games</Trans></div>
                 </div>
             </div>
             <div className="flex items-center gap-1">
                 <div className="w-4 h-4 bg-[#0098ea] rounded-full flex items-center justify-center">
-                    <Image src={'/tonCoin.svg'} alt={'ton coin'} width={18} height={18}/>
+                    <Image src={'/tonCoin.svg'} alt={t`ton coin`} width={18} height={18}/>
                 </div>
                 <span className="text-white font-bold">{player.score}</span>
             </div>
         </div>
-    )
+    );
 }

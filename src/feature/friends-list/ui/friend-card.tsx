@@ -1,3 +1,4 @@
+import { Trans, t } from '@lingui/macro';
 import {Avatar, AvatarFallback, AvatarImage} from "@/shared/ui/avatar";
 import Image from "next/image";
 
@@ -16,14 +17,14 @@ export function FriendCard({username, profit, avatarUrl}: FriendCardProps) {
                         {avatarUrl ? (
                             <AvatarImage src={avatarUrl}/>
                         ) : (
-                            <AvatarFallback className="bg-[#533189] text-white">A</AvatarFallback>
+                            <AvatarFallback className="bg-[#533189] text-white"><Trans>A</Trans></AvatarFallback>
                         )}
                     </Avatar>
                     <span className="text-white font-medium">{username}</span>
                 </div>
                 <div className="flex items-center">
                     <div className="w-5 h-5 rounded-full flex items-center justify-center mr-2">
-                        <Image src={'/tonCoin.svg'} alt={'ton coin'} width={18} height={18}/>
+                        <Image src={'/tonCoin.svg'} alt={t`ton coin`} width={18} height={18}/>
                     </div>
                     <span className="text-white font-bold">{profit.toFixed(1)}</span>
                 </div>

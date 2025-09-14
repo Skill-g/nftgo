@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import {useState, useCallback, useMemo, useRef, useEffect, JSX} from "react";
 import useSWRInfinite from "swr/infinite";
 import { GiftCard } from "./ui/gift-card";
@@ -23,8 +23,6 @@ type GiftsResponse = {
     limit: number;
 };
 
-
-
 function parseJsonSafe<T = unknown>(text: string): T | null {
     try {
         return text ? (JSON.parse(text) as T) : null;
@@ -32,15 +30,19 @@ function parseJsonSafe<T = unknown>(text: string): T | null {
         return null;
     }
 }
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
 }
+
 function textHasGiftrelayer(t: string): boolean {
     return /(?:^|[\s"'(])@?giftrelayer(?:$|[\s"'():,.!?/])/i.test(t);
 }
+
 function textHasUserNotRegistered(t: string): boolean {
     return /USER_NOT_REGISTERED_IN_MARKETPLACE/i.test(t);
 }
+
 function isUserNotRegisteredErr(raw: unknown): boolean {
     if (typeof raw === "string") return textHasUserNotRegistered(raw);
     if (isRecord(raw)) {
@@ -53,6 +55,7 @@ function isUserNotRegisteredErr(raw: unknown): boolean {
     }
     return false;
 }
+
 function hasGiftRelayerInUnknown(raw: unknown): boolean {
     if (typeof raw === "string") return textHasGiftrelayer(raw);
     if (isRecord(raw)) {
@@ -62,6 +65,7 @@ function hasGiftRelayerInUnknown(raw: unknown): boolean {
     }
     return false;
 }
+
 function linkifyTelegramMentions(text: string) {
     const parts: (string | JSX.Element)[] = [];
     const re = /@([A-Za-z0-9_]+)/g;
@@ -97,6 +101,7 @@ type StepsModalProps = {
     onConfirm?: () => void;
     disablePersist?: boolean;
 };
+
 function StepsModal({
                         open,
                         onClose,
@@ -130,8 +135,8 @@ function StepsModal({
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className="relative z-10 w-[calc(100vw-2rem)] sm:w-[560px] rounded-xl bg-white shadow-2xl">
                 <div className="flex items-center justify-between px-5 py-4 border-b">
-                    <h3 className="text-lg font-semibold text-black">Как купить подарок?</h3>
-                    <button onClick={onClose} className="p-1 rounded hover:bg-black/5" aria-label="Закрыть">
+                    <h3 className="text-lg font-semibold text-black"><Trans>Как купить подарок?</Trans></h3>
+                    <button onClick={onClose} className="p-1 rounded hover:bg-black/5" aria-label={t`Закрыть`}>
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -150,19 +155,19 @@ function StepsModal({
                             href="https://t.me/Tonnel_Network_bot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Открыть @Tonnel_Network_bot"
+                            aria-label={t`Открыть @Tonnel_Network_bot`}
                             className="block"
                         >
-                            <button className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white">@Tonnel_Network_bot</button>
+                            <button className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white"><Trans>@Tonnel_Network_bot</Trans></button>
                         </a>
                         <a
                             href="https://t.me/giftrelayer"
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Открыть @giftrelayer"
+                            aria-label={t`Открыть @giftrelayer`}
                             className="block"
                         >
-                            <button className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white">@giftrelayer</button>
+                            <button className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white"><Trans>@giftrelayer</Trans></button>
                         </a>
                     </div>
                 </div>
@@ -384,20 +389,17 @@ export function GiftsList({
                     />
                 ))}
             </div>
-
             {isLoading && items.length === 0 && (
-                <div className="text-center py-8">Загрузка...</div>
+                <div className="text-center py-8"><Trans>Загрузка...</Trans></div>
             )}
             {!isLoading && items.length === 0 && (
-                <div className="text-center py-8">Подарки не найдены</div>
+                <div className="text-center py-8"><Trans>Подарки не найдены</Trans></div>
             )}
-
             {!hasMore && allServerItems.length > 0 && (
                 <div className="flex items-center justify-center py-6">
-                    <span className="opacity-60">Это все подарки ({allServerItems.length})</span>
+                    <span className="opacity-60"><Trans>Это все подарки (</Trans>{allServerItems.length})</span>
                 </div>
             )}
-
             <StepsModal
                 open={showSteps}
                 onClose={() => setShowSteps(false)}

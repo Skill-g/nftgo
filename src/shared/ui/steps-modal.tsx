@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -50,11 +50,11 @@ export function StepsModal({
             />
             <div className="relative z-10 w-[calc(100vw-2rem)] sm:w-[560px] rounded-xl bg-white shadow-2xl">
                 <div className="flex items-center justify-between px-5 py-4 border-b">
-                    <h3 className="text-lg font-semibold">Как получить подарок</h3>
+                    <h3 className="text-lg font-semibold"><Trans>Как получить подарок</Trans></h3>
                     <button
                         onClick={onClose}
                         className="p-1 rounded hover:bg-black/5"
-                        aria-label="Закрыть"
+                        aria-label={t`Закрыть`}
                     >
                         <X className="w-5 h-5" />
                     </button>

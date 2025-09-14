@@ -1,0 +1,7 @@
+{
+  "plugins": ["react"],
+  "extends": ["plugin:react/recommended"],
+  "rules": {
+    "react/jsx-no-literals": ["warn", { "noStrings": true, "ignoreProps": false, "allowedStrings": [] }]
+  }
+}

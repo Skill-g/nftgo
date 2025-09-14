@@ -1,3 +1,4 @@
+import { Trans, t } from '@lingui/macro';
 import {Button} from "@/shared/ui/button";
 import {X} from "lucide-react";
 
@@ -13,10 +14,9 @@ export function DepositHeader({setShowDepositModal}: {setShowDepositModal: (valu
             <X className="w-5 h-5" />
         </Button>
             <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-1">Deposit</h2>
-                <p className="text-[#bcbcbc] text-sm">Select the method of deposit</p>
+                <h2 className="text-2xl font-bold text-white mb-1"><Trans>Deposit</Trans></h2>
+                <p className="text-[#bcbcbc] text-sm"><Trans>Select the method of deposit</Trans></p>
             </div>
-
         </div>
-    )
+    );
 }

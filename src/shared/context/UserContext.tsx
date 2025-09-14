@@ -1,4 +1,5 @@
-"use client"
+"use client";
+import { Trans, t } from '@lingui/macro';
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authWithBackend } from "@/feature/auth/authWithBackend";
 
@@ -104,7 +105,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (error) {
-        return <div className="text-red-400 text-center">Ошибка: {error.message}</div>;
+        return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans>{error.message}</div>;
     }
 
     return (

@@ -1,9 +1,8 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { getBackendHost } from "@/shared/lib/host";
 import { useUserContext } from "@/shared/context/UserContext";
-
 type BetStatus = "pending" | "lost" | "cashed" | "cancelled" | "active" | string;
 
 type BetItem = {
@@ -186,11 +185,11 @@ export function BetHistory({
     }
 
     if (error) {
-        return <div className="text-red-400 text-sm text-center">Ошибка: {error}</div>;
+        return <div className="text-red-400 text-sm text-center"><Trans>Ошибка:</Trans>{error}</div>;
     }
 
     if (!items.length) {
-        return <div className="text-slate-300 text-sm text-center">Пока нет ставок.</div>;
+        return <div className="text-slate-300 text-sm text-center"><Trans>Пока нет ставок.</Trans></div>;
     }
 
     return (
@@ -224,24 +223,19 @@ export function BetHistory({
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-white font-medium truncate">Раунд {bet.roundId ?? "—"}</span>
+                                        <span className="text-white font-medium truncate"><Trans>Раунд</Trans>{bet.roundId ?? "—"}</span>
                                         <StatusBadge label={badgeLabel} kind={badgeKind} />
                                         {bet.isOrphaned ? (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30">
-                        orphaned
-                      </span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30"><Trans>orphaned</Trans></span>
                                         ) : null}
                                     </div>
                                     <div className="text-xs text-white/60">{formatDateTime(bet.createdAt)}</div>
                                 </div>
                             </div>
-
                             <div className="text-right">
-                                <div className="text-sm text-white">
-                                    Ставка: <span className="font-semibold">{bet.amount}</span>
+                                <div className="text-sm text-white"><Trans>Ставка:</Trans><span className="font-semibold">{bet.amount}</span>
                                 </div>
-                                <div className="text-xs text-white/70">
-                                    Выигрыш:{" "}
+                                <div className="text-xs text-white/70"><Trans>Выигрыш:</Trans>{" "}
                                     <span className={win ? "text-emerald-300 font-medium" : "text-rose-300 font-medium"}>
                     {Number(bet.winAmount ?? 0)}
                   </span>
@@ -251,7 +245,6 @@ export function BetHistory({
                     );
                 })}
             </ul>
-
             {hasNext && (
                 <button
                     onClick={loadMore}

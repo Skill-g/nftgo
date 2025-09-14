@@ -1,5 +1,5 @@
-"use client"
-
+"use client";
+import { Trans, t } from '@lingui/macro';
 import {NftCard} from "@/feature/grid/ui/nft-card";
 import {Layout} from "@/feature/grid/ui/layout";
 import {Button} from "@/shared/ui/button";
@@ -35,21 +35,16 @@ export function NftList({imgNft, isProfile}: {isProfile: boolean, imgNft: string
                             onClick={() => {
                                 setSelectedItems([])
                             }}
-                        >
-                            Забрать
-                        </Button>
+                        ><Trans>Забрать</Trans></Button>
                         <Button
                             className="flex-1 bg-gradient-to-r from-[#3900D7] to-[#8B5CD7] hover:bg-[#533189] text-white font-semibold py-3 h-[54px]"
                             onClick={() => {
                                 setSelectedItems([])
                             }}
-                        >
-                            Продать
-                        </Button>
+                        ><Trans>Продать</Trans></Button>
                     </div>
                 </div>
             )}
         </div>
-
-    )
+    );
 }

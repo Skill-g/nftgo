@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle, X, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -98,7 +98,7 @@ export function Toast({
                                     variant="outline"
                                     className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
                                     onClick={() => copyText(tag, "tag")}
-                                    aria-label="Скопировать тег"
+                                    aria-label={t`Скопировать тег`}
                                 >
                                     <Copy className="w-3 h-3 mr-1" />
                                     {copied === "tag" ? "Скопировано" : "Скопировать тег"}
@@ -110,7 +110,7 @@ export function Toast({
                                         variant="outline"
                                         className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
                                         onClick={() => copyText(botMessage, "text")}
-                                        aria-label="Скопировать текст"
+                                        aria-label={t`Скопировать текст`}
                                     >
                                         <Copy className="w-3 h-3 mr-1" />
                                         {copied === "text" ? "Скопировано" : "Скопировать текст"}
@@ -123,9 +123,7 @@ export function Toast({
                                     className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
                                     onClick={handleOpenBot}
                                 >
-                                    <ExternalLink className="w-3 h-3 mr-1" />
-                                    Открыть
-                                </Button>
+                                    <ExternalLink className="w-3 h-3 mr-1" /><Trans>Открыть</Trans></Button>
                             </div>
                         </div>
                     )}
@@ -137,7 +135,7 @@ export function Toast({
                         onClose();
                     }}
                     className="text-white hover:text-white"
-                    aria-label="Закрыть уведомление"
+                    aria-label={t`Закрыть уведомление`}
                 >
                     <X className="w-5 h-5" />
                 </button>

@@ -59,7 +59,6 @@ function toRoundBet(raw: unknown): RoundBet | null {
     const betId = readNumber(raw.betId, NaN);
     const amount = readNumber(raw.amount, 0);
 
-    // user может быть вложен
     let userId = readNumber(raw.userId, 0);
     let usernameMasked: string | undefined = undefined;
     let avatarUrl: string | undefined = undefined;

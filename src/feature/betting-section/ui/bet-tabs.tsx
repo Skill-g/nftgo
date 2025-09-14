@@ -1,3 +1,4 @@
+import { Trans, t } from '@lingui/macro';
 import {Button} from "@/shared/ui/button";
 import {Wallet, Lock} from "lucide-react";
 
@@ -11,9 +12,7 @@ export function BetTabs({activeTab, setActiveTab}: {activeTab: string, setActive
                     activeTab === "balance" ? " rounded-[10px] bg-[#8845f5] text-white" : "bg-[#262352] text-[#969696]"
                 }`}
             >
-                <Wallet className="w-4 h-4 mr-2"/>
-                Баланс
-            </Button>
+                <Wallet className="w-4 h-4 mr-2"/><Trans>Баланс</Trans></Button>
             <Button
                 onClick={() => setActiveTab("inventory")}
                 disabled={true}
@@ -21,9 +20,7 @@ export function BetTabs({activeTab, setActiveTab}: {activeTab: string, setActive
                     activeTab === "inventory" ? "bg-[#8845f5] text-white" : "bg-[#262352]text-[#969696]"
                 }`}
             >
-                <Lock className="w-4 h-4 mr-2"/>
-                Инвентарь
-            </Button>
+                <Lock className="w-4 h-4 mr-2"/><Trans>Инвентарь</Trans></Button>
         </div>
-    )
+    );
 }

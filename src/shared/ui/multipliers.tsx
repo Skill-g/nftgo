@@ -1,12 +1,12 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 import { getBackendHost } from "@/shared/lib/host";
-
 type QueueItem = { id: string; label: string; createdAt: number };
 type AnimeEasing = "linear" | "easeOutQuad" | string;
+
 type AnimeParams = {
     targets: Element | Element[] | NodeList | string;
     translateX?: number | [number, number];
@@ -17,6 +17,7 @@ type AnimeParams = {
     complete?: () => void;
     delay?: number;
 };
+
 type AnimeFn = (params: AnimeParams) => unknown;
 type AnimeModule = { default: AnimeFn } | Record<string, unknown>;
 type Mode = "mock" | "live" | "hybrid";
@@ -285,7 +286,7 @@ export function Multipliers({
     }, [active, queueLimit, resolvedMode, animeReady]);
 
     return (
-        <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label="multipliers-stream">
+        <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label={t`multipliers-stream`}>
             {active.map((item) => (
                 <div
                     key={item.id}

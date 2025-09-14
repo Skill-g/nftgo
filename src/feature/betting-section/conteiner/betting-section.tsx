@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import { Card, CardContent } from "@/shared/ui/card";
 import { useState } from "react";
 import { BetTabs } from "@/feature/betting-section/ui/bet-tabs";
@@ -36,7 +36,7 @@ export function BettingSection({
         <Card className="bg-[#231c46] border-none py-4">
             <CardContent className="px-4 gap-[1px]">
                 <div className="mb-2">
-                    <span className="text-[#969696] text-sm">Выбрать тип ставки</span>
+                    <span className="text-[#969696] text-sm"><Trans>Выбрать тип ставки</Trans></span>
                 </div>
                 <BetTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                 <div className="space-y-2">

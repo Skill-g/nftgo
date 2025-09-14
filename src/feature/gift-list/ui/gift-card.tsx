@@ -1,5 +1,5 @@
-"use client";
-
+"use client";;
+import { Trans, t } from '@lingui/macro';
 import Image from "next/image";
 
 export function GiftCard({
@@ -26,10 +26,9 @@ export function GiftCard({
             <div className="flex bg-[#383838] rounded-[50px] pl-2 pr-2 pt-1 pb-1 text-center w-max items-center gap-1 mb-2">
                 <span className="text-white text-center text-xs font-semibold">{price.toFixed(3)}</span>
                 <div className="w-4 h-4 rounded-full flex items-center justify-center">
-                    <Image src={"/tonCoin.svg"} alt="ton coin" width={18} height={18} />
+                    <Image src={"/tonCoin.svg"} alt={t`ton coin`} width={18} height={18} />
                 </div>
             </div>
-
             <div className="relative flex ">
                 <div className="w-max rounded-lg flex items-end justify-center relative overflow-hidden w-[88px] h-[95px] mb-[8px]">
                     <img
@@ -39,13 +38,11 @@ export function GiftCard({
                         className="w-[88px] h-[95px] object-contain select-none pointer-events-none"
                     />
                     <div className="px-1 pb-1 bg-[#0098EA] rounded-[6px] flex p-[3px] items-end gap-[10px] h-max mb-[8px]">
-                        <Image src={"/shopping-cart.svg"} alt="ton coin" width={18} height={18} />
+                        <Image src={"/shopping-cart.svg"} alt={t`ton coin`} width={18} height={18} />
                     </div>
                 </div>
 
             </div>
-
-
         </button>
     );
 }
