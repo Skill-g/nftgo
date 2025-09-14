@@ -1,31 +1,17 @@
 "use client";
 import { Trans } from '@lingui/macro';
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { authWithBackend } from "@/feature/auth/authWithBackend";
+import { authWithBackend, AuthedUser } from "@/feature/auth/authWithBackend";
+import { referralSummaryCached, ReferralSummary } from "@/shared/lib/referralSummary";
 
-type TelegramUser = {
-    id: number;
-    firstName: string;
-    username: string;
-    photoUrl?: string;
-    telegramId: string;
-    languageCode: "ru" | "en";
-    createdAt: string;
-    initData: string;
-};
-
-type ReferralSummary = {
-    totalReferrals: number;
-    referralBalance: number;
-    invited: Array<{ userId: number; usernameMasked: string; profit: number; avatarUrl?: string; }>;
-};
+type TelegramUser = AuthedUser & { initData: string }
 
 type UserContextType = {
-    user: TelegramUser | null;
-    referralData: ReferralSummary | null;
-    loading: boolean;
-    error: Error | null;
-    setPreferredLanguage: (lang: "ru" | "en") => Promise<void>;
+    user: TelegramUser | null
+    referralData: ReferralSummary | null
+    loading: boolean
+    error: Error | null
+    setPreferredLanguage: (lang: "ru" | "en") => Promise<void>
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -45,16 +31,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
         (async () => {
             try {
-                const authedUser = await authWithBackend(initData);
-                setUser({ ...authedUser, initData });
-                const referralResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/referral/summary`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ initData }),
-                });
-                if (!referralResponse.ok) throw new Error("Failed to fetch referral summary");
-                const referralJson = await referralResponse.json();
-                setReferralData(referralJson);
+                const authed = await authWithBackend(initData);
+                setUser({ ...authed, initData });
+
+                const summary = await referralSummaryCached(initData);
+                setReferralData(summary);
             } catch (err: unknown) {
                 setError(err instanceof Error ? err : new Error("Unknown error"));
             } finally {

@@ -1,17 +1,8 @@
 "use client"
 import { useEffect, useState } from "react";
-import { authWithBackend } from "@/feature/auth/authWithBackend";
+import { authWithBackend, AuthedUser } from "@/feature/auth/authWithBackend";
 
-type TelegramUser = {
-    id: number;
-    firstName: string;
-    username: string;
-    photoUrl?: string;
-    telegramId: string;
-    languageCode: string;
-    createdAt: string;
-    initData: string;
-};
+type TelegramUser = AuthedUser & { initData: string }
 
 export function useTelegramAuth() {
     const [user, setUser] = useState<TelegramUser | null>(null);
@@ -21,17 +12,17 @@ export function useTelegramAuth() {
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
-        const initData = tg?.initData || "";
-        setInitData(initData);
+        const id = tg?.initData || "";
+        setInitData(id);
 
-        if (!initData) {
+        if (!id) {
             setLoading(false);
             return;
         }
 
-        authWithBackend(initData)
-            .then(setUser)
-            .catch(setError)
+        authWithBackend(id)
+            .then(u => setUser({ ...u, initData: id }))
+            .catch(e => setError(e instanceof Error ? e : new Error("Unknown error")))
             .finally(() => setLoading(false));
     }, []);
 
