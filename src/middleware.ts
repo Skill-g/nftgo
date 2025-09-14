@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const LOCALES = ['ru', 'en'] as const
+type Locale = typeof LOCALES[number]
+
+function isLocale(v: string): v is Locale {
+    return (LOCALES as readonly string[]).includes(v)
+}
 
 export function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
@@ -14,12 +19,13 @@ export function middleware(req: NextRequest) {
         return NextResponse.next()
     }
 
-    const seg = pathname.split('/')[1]
-    if (!LOCALES.includes(seg as any)) {
-        const cookieLocale = req.cookies.get('locale')?.value as 'ru' | 'en' | undefined
-        const preferred = cookieLocale ?? 'ru'
+    const seg = pathname.split('/')[1] ?? ''
+
+    if (!isLocale(seg)) {
+        const cookieRaw = req.cookies.get('locale')?.value
+        const preferred: Locale = cookieRaw && isLocale(cookieRaw) ? cookieRaw : 'ru'
         const url = req.nextUrl.clone()
-        url.pathname = `/${preferred}${pathname.startsWith('/') ? '' : '/'}${pathname}`
+        url.pathname = `/${preferred}${pathname}`
         return NextResponse.redirect(url)
     }
 
