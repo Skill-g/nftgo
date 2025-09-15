@@ -28,7 +28,7 @@ export default function LocaleClient({
     locale: 'ru' | 'en'
     children: React.ReactNode
 }) {
-    const [ready, setReady] = useState(false)
+    const [phase, setPhase] = useState<'boot' | 'redirect' | 'ready'>('boot')
     const pathname = usePathname() || '/'
     const router = useRouter()
 
@@ -38,23 +38,35 @@ export default function LocaleClient({
             let desired: 'ru' | 'en' = locale
             try {
                 const ls = localStorage.getItem('locale')
-                if (isLang(ls)) desired = ls
-            } catch {}
+                if (isLang(ls)) {
+                    desired = ls
+                } else {
+                    localStorage.setItem('locale', locale)
+                }
+            } catch {
+            }
+
             if (desired !== locale) {
-                await activate(desired)
+                setPhase('redirect')
                 const nextPath = swapLocaleInPath(pathname, desired)
-                router.replace(nextPath)
-                router.refresh()
-                if (alive) setReady(true)
+                if (nextPath !== pathname) {
+                    router.replace(nextPath)
+                }
                 return
             }
-            await activate(locale)
-            if (alive) setReady(true)
-        })()
-        return () => { alive = false }
-    }, [locale, pathname, router])
 
-    if (!ready) return null
+            await activate(locale)
+            if (alive) setPhase('ready')
+        })()
+
+        return () => {
+            alive = false
+        }
+    }, [locale])
+
+    if (phase !== 'ready') {
+        return <div style={{ minHeight: '100vh' }} />
+    }
 
     return (
         <I18nProvider i18n={i18n}>

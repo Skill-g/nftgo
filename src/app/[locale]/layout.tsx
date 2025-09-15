@@ -9,6 +9,6 @@ export default function LocaleLayout({
     params: Promise<{ locale: string }>
 }) {
     const { locale: raw } = use(params)
-    const locale = raw === 'en' ? 'en' : 'ru'
+    const locale: 'ru' | 'en' = raw === 'en' ? 'en' : 'ru'
     return <LocaleClient locale={locale}>{children}</LocaleClient>
 }

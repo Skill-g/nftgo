@@ -202,16 +202,16 @@ export function BetHistory({
                     let badgeLabel = "";
                     let badgeKind: "win" | "loss" | "pending" | "cancelled" = "pending";
                     if (bet.status === "cancelled") {
-                        badgeLabel = "Отменено";
+                        badgeLabel = t`Отменено`;
                         badgeKind = "cancelled";
                     } else if (bet.status === "pending") {
-                        badgeLabel = "В процессе";
+                        badgeLabel = t`В процессе`;
                         badgeKind = "pending";
                     } else if (win || bet.status === "cashed") {
-                        badgeLabel = "Выиграл";
+                        badgeLabel = t`Выиграл`;
                         badgeKind = "win";
                     } else {
-                        badgeLabel = "Проиграл";
+                        badgeLabel = t`Проиграл`;
                         badgeKind = "loss";
                     }
 
@@ -251,7 +251,7 @@ export function BetHistory({
                     disabled={loadingMore}
                     className="mt-2 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/15 text-white ring-1 ring-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loadingMore ? "Загрузка..." : "Загрузить ещё"}
+                    {loadingMore ? t`Загрузка...` : t`Загрузить ещё`}
                 </button>
             )}
         </div>

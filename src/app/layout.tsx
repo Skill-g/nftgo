@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     ]
 
     return (
-        <html lang="ru" suppressHydrationWarning>
+        <html suppressHydrationWarning>
         <head>
             {imageUrls.map((url, i) => (
                 <link key={i} rel="preload" href={url} as="image" />
