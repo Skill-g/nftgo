@@ -1,5 +1,9 @@
 import { use } from 'react'
-import LocaleClient from './LocaleClient'
+import LinguiClientProvider from './LinguiClientProvider'
+import PrefetchOtherLocale from './PrefetchOtherLocale'
+import { AppProviders } from '@/app/AppProviders'
+import { Header } from '@/shared/ui/header'
+import { BottomNav } from '@/feature/bottom-nav'
 
 export default function LocaleLayout({
                                          children,
@@ -10,5 +14,19 @@ export default function LocaleLayout({
 }) {
     const { locale: raw } = use(params)
     const locale: 'ru' | 'en' = raw === 'en' ? 'en' : 'ru'
-    return <LocaleClient locale={locale}>{children}</LocaleClient>
+
+    const { messages } = use(import(`@/locales/${locale}/messages.js`)) as {
+        messages: Record<string, string>
+    }
+
+    return (
+        <LinguiClientProvider locale={locale} messages={messages}>
+            <PrefetchOtherLocale current={locale} />
+            <AppProviders>
+                <Header />
+                {children}
+                <BottomNav />
+            </AppProviders>
+        </LinguiClientProvider>
+    )
 }
