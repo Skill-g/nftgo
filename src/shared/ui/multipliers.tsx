@@ -1,5 +1,7 @@
-"use client";;
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
@@ -83,27 +85,27 @@ export function Multipliers({
                                 maxConcurrent: maxConcurrentProp = 8,
                                 queueLimit = 200,
                             }: MultipliersProps) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
     const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
-
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
-
     const processed = useRef<Set<number>>(new Set());
     const lastSeenEndTs = useRef<number>(0);
     const fetching = useRef(false);
-
     const containerRef = useRef<HTMLDivElement | null>(null);
     const animeRef = useRef<AnimeFn | null>(null);
     const [animeReady, setAnimeReady] = useState(false);
     const rafId = useRef<number | null>(null);
     const gcTimer = useRef<number | null>(null);
     const maxConcurrent = maxConcurrentProp;
-
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [active, setActive] = useState<QueueItem[]>([]);
     const [history, setHistory] = useState<HistoryRow[]>([]);
-
     const nodeMapRef = useRef(new Map<string, HTMLDivElement | null>());
+
     const setNodeRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
         nodeMapRef.current.set(id, el);
     }, []);
@@ -286,7 +288,7 @@ export function Multipliers({
     }, [active, queueLimit, resolvedMode, animeReady]);
 
     return (
-        <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label={t`multipliers-stream`}>
+        <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label={i18n._(msg`multipliers-stream`)}>
             {active.map((item) => (
                 <div
                     key={item.id}

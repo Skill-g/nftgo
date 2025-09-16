@@ -1,5 +1,7 @@
-"use client";;
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import Image from "next/image";
 import {Input} from "@/shared/ui/input";
 import {useEffect, useState} from "react";
@@ -17,6 +19,10 @@ export function FilterBar({
     onValueChange?: (value: number | null) => void;
     value?: number | null;
 }) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const [value, setValue] = useState<string>(controlledValue != null ? String(controlledValue) : "");
 
     useEffect(() => {
@@ -62,7 +68,7 @@ export function FilterBar({
                     onChange={handleInputChange}
                 />
                 <div className="w-4 h-2.5 bg-[#0098ea] rounded-full flex items-center justify-center">
-                    <Image src={'/tonCoin.svg'} alt={t`ton Coin`} width={15} height={15} />
+                    <Image src={'/tonCoin.svg'} alt={i18n._(msg`ton Coin`)} width={15} height={15} />
                 </div>
             </div>
         </div>

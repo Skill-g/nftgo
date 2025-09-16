@@ -1,5 +1,7 @@
-"use client";
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import {Button} from "@/shared/ui/button"
 import {Input} from "@/shared/ui/input"
 import {X} from "lucide-react"
@@ -23,10 +25,13 @@ const toNumber = (v: unknown): number | null => {
 }
 
 export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: boolean, setShowPromoModal: (value: boolean) => void}) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const { user } = useUserContext()
     const initData = useMemo(() => user?.initData ?? "", [user])
     const { setOptimistic, refresh } = useBalance(initData)
-
     const [promoCode, setPromoCode] = useState("")
     const [submitting, setSubmitting] = useState(false)
     const [status, setStatus] = useState<Status>("idle")
@@ -106,7 +111,7 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
                 <div className="text-center mb-8">
                     <h2 className="text-xl font-semibold text-white mb-6"><Trans>Enter promotional code</Trans></h2>
                     <Input
-                        placeholder={t`Enter promo-code...`}
+                        placeholder={i18n._(msg`Enter promo-code...`)}
                         value={promoCode}
                         onChange={(e) => { setPromoCode(e.target.value); if (status !== "idle") setStatus("idle") }}
                         onKeyDown={(e) => { if (e.key === "Enter") redeem() }}
@@ -122,7 +127,7 @@ export function CodeModal({showPromoModal, setShowPromoModal}: {showPromoModal: 
                 </div>
 
                 <div className="flex items-center justify-center gap-2 mt-8">
-                    <Image src="/promo.png" width={66} height={48} alt={t`promo`} />
+                    <Image src="/promo.png" width={66} height={48} alt={i18n._(msg`promo`)} />
                 </div>
             </div>
         </div>

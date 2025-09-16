@@ -1,5 +1,7 @@
-"use client";;
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle, X, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -21,6 +23,10 @@ export function Toast({
                           onClose,
                           autoCloseMs = 6000,
                       }: ToastProps) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const [show, setShow] = useState(true);
     const [copied, setCopied] = useState<"none" | "tag" | "text">("none");
 
@@ -98,7 +104,7 @@ export function Toast({
                                     variant="outline"
                                     className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
                                     onClick={() => copyText(tag, "tag")}
-                                    aria-label={t`Скопировать тег`}
+                                    aria-label={i18n._(msg`Скопировать тег`)}
                                 >
                                     <Copy className="w-3 h-3 mr-1" />
                                     {copied === "tag" ? "Скопировано" : "Скопировать тег"}
@@ -110,7 +116,7 @@ export function Toast({
                                         variant="outline"
                                         className="h-7 px-3 text-xs bg-white/10 text-white border border-white/30 hover:bg-white/15"
                                         onClick={() => copyText(botMessage, "text")}
-                                        aria-label={t`Скопировать текст`}
+                                        aria-label={i18n._(msg`Скопировать текст`)}
                                     >
                                         <Copy className="w-3 h-3 mr-1" />
                                         {copied === "text" ? "Скопировано" : "Скопировать текст"}
@@ -135,7 +141,7 @@ export function Toast({
                         onClose();
                     }}
                     className="text-white hover:text-white"
-                    aria-label={t`Закрыть уведомление`}
+                    aria-label={i18n._(msg`Закрыть уведомление`)}
                 >
                     <X className="w-5 h-5" />
                 </button>

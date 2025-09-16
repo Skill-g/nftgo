@@ -1,5 +1,7 @@
-"use client";;
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -21,6 +23,10 @@ export function StepsModal({
                                confirmText = "Я понял",
                                onConfirm,
                            }: StepsModalProps) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     useEffect(() => {
         if (!open) return;
         const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -54,7 +60,7 @@ export function StepsModal({
                     <button
                         onClick={onClose}
                         className="p-1 rounded hover:bg-black/5"
-                        aria-label={t`Закрыть`}
+                        aria-label={i18n._(msg`Закрыть`)}
                     >
                         <X className="w-5 h-5" />
                     </button>

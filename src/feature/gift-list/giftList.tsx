@@ -1,5 +1,7 @@
-"use client";;
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import {useState, useCallback, useMemo, useRef, useEffect, JSX} from "react";
 import useSWRInfinite from "swr/infinite";
 import { GiftCard } from "./ui/gift-card";
@@ -111,6 +113,10 @@ function StepsModal({
                         onConfirm,
                         disablePersist = false,
                     }: StepsModalProps) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     useEffect(() => {
         if (!open) return;
         const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -136,7 +142,7 @@ function StepsModal({
             <div className="relative z-10 w-[calc(100vw-2rem)] sm:w-[560px] rounded-xl bg-white shadow-2xl">
                 <div className="flex items-center justify-between px-5 py-4 border-b">
                     <h3 className="text-lg font-semibold text-black"><Trans>Как купить подарок?</Trans></h3>
-                    <button onClick={onClose} className="p-1 rounded hover:bg-black/5" aria-label={t`Закрыть`}>
+                    <button onClick={onClose} className="p-1 rounded hover:bg-black/5" aria-label={i18n._(msg`Закрыть`)}>
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -155,7 +161,7 @@ function StepsModal({
                             href="https://t.me/Tonnel_Network_bot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={t`Открыть @Tonnel_Network_bot`}
+                            aria-label={i18n._(msg`Открыть @Tonnel_Network_bot`)}
                             className="block"
                         >
                             <button className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white"><Trans>@Tonnel_Network_bot</Trans></button>
@@ -164,7 +170,7 @@ function StepsModal({
                             href="https://t.me/giftrelayer"
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={t`Открыть @giftrelayer`}
+                            aria-label={i18n._(msg`Открыть @giftrelayer`)}
                             className="block"
                         >
                             <button className="w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white"><Trans>@giftrelayer</Trans></button>

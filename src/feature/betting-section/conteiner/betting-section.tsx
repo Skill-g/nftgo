@@ -1,4 +1,4 @@
-"use client";;
+
 import { Trans, t } from '@lingui/macro';
 import { Card, CardContent } from "@/shared/ui/card";
 import { useState } from "react";

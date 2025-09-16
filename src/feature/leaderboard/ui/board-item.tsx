@@ -1,4 +1,6 @@
-import { Trans, t } from '@lingui/macro';
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import {Avatar, AvatarFallback, AvatarImage} from "@/shared/ui/avatar"
 import Image from "next/image"
 
@@ -11,6 +13,10 @@ interface PlayerProps {
 }
 
 export function BoardItem({player}: {player: PlayerProps}) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     return (
         <div
             className={`bg-gradient-to-r ${player.gradient} rounded-xl p-4 flex items-center justify-between`}
@@ -28,7 +34,7 @@ export function BoardItem({player}: {player: PlayerProps}) {
             </div>
             <div className="flex items-center gap-1">
                 <div className="w-4 h-4 bg-[#0098ea] rounded-full flex items-center justify-center">
-                    <Image src={'/tonCoin.svg'} alt={t`ton coin`} width={18} height={18}/>
+                    <Image src={'/tonCoin.svg'} alt={i18n._(msg`ton coin`)} width={18} height={18}/>
                 </div>
                 <span className="text-white font-bold">{player.score}</span>
             </div>

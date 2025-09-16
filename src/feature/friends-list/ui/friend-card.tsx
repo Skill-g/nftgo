@@ -1,4 +1,6 @@
-import { Trans, t } from '@lingui/macro';
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import {Avatar, AvatarFallback, AvatarImage} from "@/shared/ui/avatar";
 import Image from "next/image";
 
@@ -9,6 +11,10 @@ type FriendCardProps = {
 };
 
 export function FriendCard({username, profit, avatarUrl}: FriendCardProps) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     return (
         <div className="bg-[#262352] rounded-2xl p-4">
             <div className="flex items-center justify-between">
@@ -24,7 +30,7 @@ export function FriendCard({username, profit, avatarUrl}: FriendCardProps) {
                 </div>
                 <div className="flex items-center">
                     <div className="w-5 h-5 rounded-full flex items-center justify-center mr-2">
-                        <Image src={'/tonCoin.svg'} alt={t`ton coin`} width={18} height={18}/>
+                        <Image src={'/tonCoin.svg'} alt={i18n._(msg`ton coin`)} width={18} height={18}/>
                     </div>
                     <span className="text-white font-bold">{profit.toFixed(1)}</span>
                 </div>

@@ -1,15 +1,15 @@
-"use client";
 
+'use client';
+import { useLingui } from '@lingui/react';
 import { Card, CardContent } from "@/shared/ui/card";
 import { DepositHeader } from "@/feature/deposit/ui/deposit-header";
 import { useMemo, useState, useEffect } from "react";
-import { t } from '@lingui/macro'
+import { t, msg } from '@lingui/macro';
 import { PaymentMethod } from "@/feature/deposit/ui/payment-method";
 import { DepositInput } from "@/feature/deposit/ui/deposit-input";
 import { Button } from "@/shared/ui/button";
 import { useTonConnect } from "@/shared/context/TonConnectContext";
 import { useUserContext } from "@/shared/context/UserContext";
-
 type TonConnectTxMessage = { address: string; amount: string; payload?: string };
 type TonConnectTransaction = { validUntil: number; messages: TonConnectTxMessage[] };
 
@@ -47,6 +47,10 @@ type DepositCreateResponseTon = {
 };
 
 export function Deposit({ showDepositModal, setShowDepositModal }: { showDepositModal: boolean; setShowDepositModal: (value: boolean) => void }) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const { tonConnectUI, isConnected } = useTonConnect();
     const { user } = useUserContext();
     const initData = useMemo(() => user?.initData ?? "", [user]);
@@ -55,19 +59,21 @@ export function Deposit({ showDepositModal, setShowDepositModal }: { showDeposit
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastDepositId, setLastDepositId] = useState<number | null>(null);
+
     const numericAmount = useMemo(() => {
         const n = Number(amount);
         return Number.isFinite(n) ? n : NaN;
     }, [amount]);
+
     const validAmount = numericAmount >= 0.1;
     const disabled = !validAmount || !selectedPaymentMethod || submitting;
+
     const buttonText =
         selectedPaymentMethod === 'cryptopay'
-            ? t`Pay via CryptoBot`
+            ? i18n._(msg`Pay via CryptoBot`)
             : isConnected
-                ? t`Deposit`
-                : t`Please connect your wallet`;
-
+                ? i18n._(msg`Deposit`)
+                : i18n._(msg`Please connect your wallet`);
 
     const toTonConnectTx = (resp: DepositCreateResponseTon): TonConnectTransaction => {
         return {
@@ -190,7 +196,7 @@ export function Deposit({ showDepositModal, setShowDepositModal }: { showDeposit
                     <DepositInput value={amount} onChange={setAmount} />
                     {error ? <div className="text-red-400 text-sm">{error}</div> : null}
                     <Button onClick={handleDeposit} disabled={disabled} className="w-full h-12 bg-gradient-to-r from-[#984eed] to-[#8845f5] hover:from-[#8845f5] hover:to-[#984eed] text-white font-semibold rounded-xl border-none disabled:opacity-50 disabled:cursor-not-allowed">
-                        {submitting ? t`Processing...` : buttonText}
+                        {submitting ? i18n._(msg`Processing...`) : buttonText}
                     </Button>
                 </CardContent>
             </Card>

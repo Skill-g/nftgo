@@ -1,5 +1,7 @@
-"use client";
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { useUserContext } from "@/shared/context/UserContext";
 import { useState } from "react";
 import { CodeModal } from "@/feature/code-modal";
@@ -11,6 +13,10 @@ import { ReferralBalance } from "@/feature/referral-balance";
 import { FriendsList } from "@/feature/friends-list";
 
 export default function Page() {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const [showPromoModal, setShowPromoModal] = useState(false);
     const { user, loading, error } = useUserContext();
 
@@ -89,13 +95,13 @@ export default function Page() {
                         <h2 className="text-white text-xl font-bold mb-1"><Trans>Получи 10% от депозита</Trans><br /><Trans>вашего друга</Trans></h2>
                     </div>
                     <div className="w-16 h-16 opacity-60">
-                        <Image src={"/friends/nftGoLogo.png"} alt={t`nft go logo`} width={91} height={100} />
+                        <Image src={"/friends/nftGoLogo.png"} alt={i18n._(msg`nft go logo`)} width={91} height={100} />
                     </div>
                 </div>
             </div>
             <ReferralBalance />
             <div onClick={() => setShowPromoModal(true)} className="flex items-center justify-center">
-                <Banner img={"/friends/ticket.png"} title={t`Активировать промокод`} />
+                <Banner img={"/friends/ticket.png"} title={i18n._(msg`Активировать промокод`)} />
             </div>
             <FriendsList />
             <div className="flex mb-30 justify-between">

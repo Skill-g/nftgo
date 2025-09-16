@@ -1,4 +1,6 @@
-import { Trans, t } from '@lingui/macro';
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Minus, Plus } from "lucide-react";
@@ -29,26 +31,29 @@ export function BetControl({
                                onPlaceBet,
                                onCashOut,
                            }: BetControlProps) {
-    const [showDepositModal, setShowDepositModal] = useState(false);
+    const {
+        i18n: i18n
+    } = useLingui();
 
+    const [showDepositModal, setShowDepositModal] = useState(false);
     let buttonStyle: CSSProperties = {};
     let winSum = 0;
+
     if (typeof betAmount1 === "number" && typeof multiplier === "number") {
         winSum = Math.floor(betAmount1 * multiplier);
     }
 
-    let buttonContent: React.ReactNode = t`СТАВИТЬ`
+    let buttonContent: React.ReactNode = i18n._(msg`СТАВИТЬ`)
     let buttonClass = "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white"
     let buttonDisabled = false
     let buttonOnClick: (() => void) | undefined = onPlaceBet
 
     if (placed && waiting) {
-        buttonContent = t`ОЖИДАНИЕ`
+        buttonContent = i18n._(msg`ОЖИДАНИЕ`)
         buttonClass = "bg-[#1B1636] text-white"
         buttonDisabled = true
         buttonOnClick = undefined
     }
-
 
     if (placed && !waiting) {
         buttonContent = (
@@ -66,7 +71,7 @@ export function BetControl({
     }
 
     if (!placed && isActive) {
-        buttonContent = t`СТАВКИ ЗАКРЫТЫ`
+        buttonContent = i18n._(msg`СТАВКИ ЗАКРЫТЫ`)
         buttonClass = "bg-[#1B1636] text-[#969696]"
         buttonDisabled = true
         buttonOnClick = undefined

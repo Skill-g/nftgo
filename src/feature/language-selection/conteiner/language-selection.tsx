@@ -1,12 +1,12 @@
-'use client'
-
-import { Trans, t } from '@lingui/macro'
+'use client';
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { Card } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { useState } from 'react'
 import { useUserContext } from '@/shared/context/UserContext'
 import { usePathname, useRouter } from 'next/navigation'
-
 type Locale = 'ru' | 'en'
 
 function swapLocaleInPath(pathname: string, next: Locale) {
@@ -24,11 +24,14 @@ function getLocaleFromPath(pathname: string): Locale {
 }
 
 export function LanguageSelection() {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const { user, setPreferredLanguage } = useUserContext()
     const [saving, setSaving] = useState<null | Locale>(null)
     const pathname = usePathname() || '/'
     const router = useRouter()
-
     const current = getLocaleFromPath(pathname)
     const selected = current === 'ru' ? 'russian' : 'english'
 
@@ -59,7 +62,6 @@ export function LanguageSelection() {
     return (
         <Card className="bg-[#231C46] p-4 flex gap-3 mb-6 border-none">
             <h3 className="text-[#CECECE] text-sm"><Trans>Выбрать язык</Trans></h3>
-
             <div className="flex gap-3 bg-[#262352] rounded-2xl">
                 <Button
                     onClick={() => handleClick('ru')}
@@ -71,7 +73,7 @@ export function LanguageSelection() {
                             : 'bg-[#262352]'
                     }`}
                 >
-                    {saving === 'ru' ? t`Сохраняю...` : t`Русский`}
+                    {saving === 'ru' ? i18n._(msg`Сохраняю...`) : i18n._(msg`Русский`)}
                 </Button>
 
                 <Button
@@ -84,9 +86,9 @@ export function LanguageSelection() {
                             : 'bg-[#262352]'
                     }`}
                 >
-                    {saving === 'en' ? t`Saving...` : t`English`}
+                    {saving === 'en' ? i18n._(msg`Saving...`) : i18n._(msg`English`)}
                 </Button>
             </div>
         </Card>
-    )
+    );
 }

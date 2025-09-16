@@ -1,5 +1,7 @@
-"use client";;
-import { Trans, t } from '@lingui/macro';
+
+'use client';
+import { useLingui } from '@lingui/react';
+import { Trans, t, msg } from '@lingui/macro';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
@@ -81,6 +83,10 @@ function AnimatedSeconds({ seconds }: { seconds: number }) {
 }
 
 export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
+    const {
+        i18n: i18n
+    } = useLingui();
+
     const { state } = useGame();
 
     useEffect(() => {
@@ -104,11 +110,9 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
 
     const isActiveReal = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
     const isActive = USE_MOCK ? false : isActiveReal;
-
     const remainingReal = useCountdown(state.timeToStart ?? 0);
     const remainingMock = useMockSeconds(USE_MOCK, 12);
     const remainingSec = USE_MOCK ? remainingMock : remainingReal;
-
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
     const [runnerPx, setRunnerPx] = useState(-80);
@@ -184,7 +188,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                 {!isActive && (
                     <>
                         <div>
-                            <Image src={"/rocket/rocket.png"} alt={t`rocket`} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
+                            <Image src={"/rocket/rocket.png"} alt={i18n._(msg`rocket`)} width={50} height={50} className="w-16 h-16 mx-auto text-[#984eed] mb-4" />
                         </div>
                         <h2 className="text-xl font-bold"><Trans>ОЖИДАНИЕ</Trans></h2>
                         <AnimatedSeconds seconds={remainingSec} />
@@ -214,7 +218,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                         >
                             <Image
                                 src={"/rocket/begu.gif"}
-                                alt={t`runner`}
+                                alt={i18n._(msg`runner`)}
                                 width={64}
                                 height={64}
                                 style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }}
