@@ -16,17 +16,27 @@ function isiOS() {
     return /iP(hone|ad|od)/.test(navigator.userAgent);
 }
 
-async function copyTextRobust(text: string) {
+type NavigatorWithShare = Navigator & {
+    share?: (data: ShareData) => Promise<void>;
+};
+
+type CopyOkVia = 'share' | 'clipboard' | 'execCommand';
+type CopyResult =
+    | { ok: true; via: CopyOkVia }
+    | { ok: false; error: unknown };
+
+async function copyTextRobust(text: string): Promise<CopyResult> {
     if (typeof navigator !== 'undefined' && 'share' in navigator) {
+        const nav = navigator as NavigatorWithShare;
         try {
-            await (navigator as any).share({ url: text });
-            return { ok: true as const, via: 'share' as const };
+            await nav.share?.({ url: text });
+            return { ok: true, via: 'share' };
         } catch {}
     }
     if (navigator.clipboard?.writeText) {
         try {
             await navigator.clipboard.writeText(text);
-            return { ok: true as const, via: 'clipboard' as const };
+            return { ok: true, via: 'clipboard' };
         } catch {}
     }
     try {
@@ -48,9 +58,9 @@ async function copyTextRobust(text: string) {
         sel?.removeAllRanges();
         document.body.removeChild(ta);
         if (!ok) throw new Error('execCommand failed');
-        return { ok: true as const, via: 'execCommand' as const };
+        return { ok: true, via: 'execCommand' };
     } catch (e) {
-        return { ok: false as const, error: e };
+        return { ok: false, error: e };
     }
 }
 
@@ -70,7 +80,7 @@ export default function Page() {
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
-            const tg = (window as any).Telegram?.WebApp;
+            const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
             if (tg) {
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`;
                 if (tg.openTelegramLink) {
@@ -102,7 +112,7 @@ export default function Page() {
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
-            const tg = (window as any).Telegram?.WebApp;
+            const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
             if (tg?.openTelegramLink) {
                 tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`);
                 return;
@@ -123,7 +133,7 @@ export default function Page() {
     }
 
     if (error) {
-        return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans>{error.message}</Trans></div>;
+        return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans> {error.message}</div>;
     }
 
     return (
