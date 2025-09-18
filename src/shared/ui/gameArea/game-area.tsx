@@ -1,13 +1,13 @@
-
 'use client';
 import { useLingui } from '@lingui/react';
-import { Trans, t, msg } from '@lingui/macro';
+import { Trans, msg } from '@lingui/macro';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
 import { useGame } from "@/shared/hooks/useGame";
 import { motion, AnimatePresence } from "framer-motion";
+
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_CRUSH === "1";
 
 type GameAreaProps = {
@@ -82,24 +82,39 @@ function AnimatedSeconds({ seconds }: { seconds: number }) {
     );
 }
 
-export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
-    const {
-        i18n: i18n
-    } = useLingui();
+function usePhaseForUI(phase: string, roundId: number | null, delayMs = 350) {
+    const [uiPhase, setUiPhase] = useState(phase);
+    const toRef = useRef<number | null>(null);
 
+    useEffect(() => {
+        if (phase === 'waiting') {
+            if (toRef.current) window.clearTimeout(toRef.current);
+            toRef.current = window.setTimeout(() => setUiPhase('waiting'), delayMs);
+        } else {
+            if (toRef.current) {
+                window.clearTimeout(toRef.current);
+                toRef.current = null;
+            }
+            setUiPhase(phase);
+        }
+        return () => {
+            if (toRef.current) {
+                window.clearTimeout(toRef.current);
+                toRef.current = null;
+            }
+        };
+    }, [phase, roundId, delayMs]);
+
+    return uiPhase;
+}
+
+export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
+    const { i18n } = useLingui();
     const { state } = useGame();
 
-    useEffect(() => {
-        setGamePhase(state.phase);
-    }, [state.phase, setGamePhase]);
-
-    useEffect(() => {
-        setCurrentMultiplier(state.multiplier);
-    }, [state.multiplier, setCurrentMultiplier]);
-
-    useEffect(() => {
-        setRoundId(state.roundId ?? null);
-    }, [state.roundId, setRoundId]);
+    useEffect(() => { setGamePhase(state.phase); }, [state.phase, setGamePhase]);
+    useEffect(() => { setCurrentMultiplier(state.multiplier); }, [state.multiplier, setCurrentMultiplier]);
+    useEffect(() => { setRoundId(state.roundId ?? null); }, [state.roundId, setRoundId]);
 
     useEffect(() => {
         if (state.phase === "crashed") {
@@ -108,11 +123,18 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
         }
     }, [state.phase, resetBets]);
 
-    const isActiveReal = useMemo(() => state.phase !== "waiting" || state.multiplier > 1, [state.phase, state.multiplier]);
+    const uiPhase = usePhaseForUI(state.phase, state.roundId ?? null, 350);
+
+    const isActiveReal = useMemo(
+        () => uiPhase !== "waiting" || state.multiplier > 1,
+        [uiPhase, state.multiplier]
+    );
     const isActive = USE_MOCK ? false : isActiveReal;
+
     const remainingReal = useCountdown(state.timeToStart ?? 0);
     const remainingMock = useMockSeconds(USE_MOCK, 12);
     const remainingSec = USE_MOCK ? remainingMock : remainingReal;
+
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
     const [runnerPx, setRunnerPx] = useState(-80);
@@ -198,10 +220,10 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                 {isActive && (
                     <div ref={trackRef} className="relative w-full mt-12" style={{ height: 128, minHeight: 128, marginBottom: 16 }}>
                         <div className="absolute left-0 w-full flex justify-center" style={{ top: 0, zIndex: 10, pointerEvents: "none" }}>
-              <span className="text-2xl font-bold select-none" style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}><Trans>x</Trans>{state.multiplier.toFixed(2)}
+              <span className="text-2xl font-bold select-none" style={{ color: "#8845f5", borderRadius: 8, padding: "2px 16px" }}>
+                <Trans>x</Trans>{state.multiplier.toFixed(2)}
                   {state.phase === "crashed" && (
-                      <span className="mt-2 text-white">
-                    <br /><Trans>УБЕЖАЛ</Trans></span>
+                      <span className="mt-2 text-white"><br /><Trans>УБЕЖАЛ</Trans></span>
                   )}
               </span>
                         </div>

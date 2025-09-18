@@ -1,12 +1,12 @@
 'use client';
 import { useLingui } from '@lingui/react';
-import { Trans, t, msg } from '@lingui/macro';
+import { Trans, msg } from '@lingui/macro';
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { Deposit } from "@/feature/deposit";
-import type { CSSProperties } from 'react'
+import type { CSSProperties } from 'react';
 
 type BetControlProps = {
     presetAmounts: number[];
@@ -20,6 +20,13 @@ type BetControlProps = {
     onCashOut: () => void;
 };
 
+function formatTon(n: number, minFrac = 1, maxFrac = 6): string {
+    const fixed = n.toFixed(maxFrac);
+    const trimmed = fixed.replace(/(\.\d*?[1-9])0+$/,'$1').replace(/\.0+$/,'');
+    if (trimmed.includes('.')) return trimmed;
+    return Number(n).toFixed(minFrac);
+}
+
 export function BetControl({
                                presetAmounts,
                                betAmount1,
@@ -31,51 +38,45 @@ export function BetControl({
                                onPlaceBet,
                                onCashOut,
                            }: BetControlProps) {
-    const {
-        i18n: i18n
-    } = useLingui();
-
+    const { i18n } = useLingui();
     const [showDepositModal, setShowDepositModal] = useState(false);
-    let buttonStyle: CSSProperties = {};
-    let winSum = 0;
 
-    if (typeof betAmount1 === "number" && typeof multiplier === "number") {
-        winSum = Math.floor(betAmount1 * multiplier);
-    }
+    const winSum = betAmount1 * multiplier;
 
-    let buttonContent: React.ReactNode = i18n._(msg`СТАВИТЬ`)
-    let buttonClass = "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white"
-    let buttonDisabled = false
-    let buttonOnClick: (() => void) | undefined = onPlaceBet
+    const canCashOut = placed && !waiting;
+    const canPlace = !placed && !isActive;
+    const isClosed = !placed && isActive;
+    const isWaitingPlaced = placed && waiting;
 
-    if (placed && waiting) {
-        buttonContent = i18n._(msg`ОЖИДАНИЕ`)
-        buttonClass = "bg-[#1B1636] text-white"
-        buttonDisabled = true
-        buttonOnClick = undefined
-    }
+    const buttonDisabled = isClosed || isWaitingPlaced ? true : false;
+    const buttonStyle: CSSProperties = canCashOut
+        ? { background: "linear-gradient(137deg, #18CD00 5.88%, #54BA39 46.39%, #067200 92.75%)" }
+        : {};
 
-    if (placed && !waiting) {
-        buttonContent = (
-            <div className="flex flex-col items-center leading-tight">
-                <span className="text-lg font-bold mb-1 text-white">{winSum}<Trans>TON</Trans></span>
-                <span className="text-white"><Trans>ЗАБРАТЬ</Trans></span>
-            </div>
-        );
-        buttonClass = "text-black";
-        buttonStyle = {
-            background: "linear-gradient(137deg, #18CD00 5.88%, #54BA39 46.39%, #067200 92.75%)",
-        };
-        buttonDisabled = false;
-        buttonOnClick = onCashOut;
-    }
+    const buttonClass = canCashOut
+        ? "text-black rounded-[20px] font-bold w-[100%] h-[100%]"
+        : isClosed
+            ? "bg-[#1B1636] text-[#969696] rounded-[20px] font-bold w-[100%] h-[100%]"
+            : isWaitingPlaced
+                ? "bg-[#1B1636] text-white rounded-[20px] font-bold w-[100%] h-[100%]"
+                : "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white rounded-[20px] font-bold w-[100%] h-[100%]";
 
-    if (!placed && isActive) {
-        buttonContent = i18n._(msg`СТАВКИ ЗАКРЫТЫ`)
-        buttonClass = "bg-[#1B1636] text-[#969696]"
-        buttonDisabled = true
-        buttonOnClick = undefined
-    }
+    const onButtonClick = canCashOut ? onCashOut : canPlace ? onPlaceBet : () => {};
+
+    const buttonContent = canCashOut ? (
+        <div className="flex flex-col items-center leading-tight">
+      <span className="text-lg font-bold mb-1 text-white">
+        {formatTon(winSum)} <Trans>TON</Trans>
+      </span>
+            <span className="text-white"><Trans>ЗАБРАТЬ</Trans></span>
+        </div>
+    ) : isClosed ? (
+        i18n._(msg`СТАВКИ ЗАКРЫТЫ`)
+    ) : isWaitingPlaced ? (
+        i18n._(msg`ОЖИДАНИЕ`)
+    ) : (
+        i18n._(msg`СТАВИТЬ`)
+    );
 
     const controlsDisabled = placed || (!placed && isActive);
 
@@ -89,6 +90,7 @@ export function BetControl({
                         className="w-8 h-8 p-0 text-[#969696] hover:text-white"
                         onClick={() => setBetAmount1(Math.max(1, betAmount1 - 1))}
                         disabled={controlsDisabled}
+                        type="button"
                     >
                         <div className="flex justify-center items-center bg-[#241E44] rounded-[10px] w-[35px] h-[35px]">
                             <Minus className="bg-[#241E44] w-4 h-4" />
@@ -107,6 +109,7 @@ export function BetControl({
                         className="w-8 h-8 p-0 text-[#969696] hover:text-white"
                         onClick={() => setBetAmount1(betAmount1 + 1)}
                         disabled={controlsDisabled}
+                        type="button"
                     >
                         <div className="flex justify-center items-center bg-[#241E44] rounded-[10px] w-[35px] h-[35px]">
                             <Plus className="w-4 h-4" />
@@ -114,7 +117,7 @@ export function BetControl({
                     </Button>
                 </div>
                 <div className="flex gap-1">
-                    {presetAmounts.map((amount: number) => (
+                    {presetAmounts.map((amount) => (
                         <Button
                             key={amount}
                             size="sm"
@@ -122,6 +125,7 @@ export function BetControl({
                             className="text-[#969696] hover:text-white bg-[#241E44] rounded-[5px] w-[30px] h-[20px] text-xs"
                             onClick={() => setBetAmount1(amount)}
                             disabled={controlsDisabled}
+                            type="button"
                         >
                             {amount}
                         </Button>
@@ -130,10 +134,11 @@ export function BetControl({
             </div>
             <div className="w-[100%] py-2 px-1">
                 <Button
-                    onClick={buttonOnClick}
-                    className={`rounded-[20px] font-bold w-[100%] h-[100%] ${buttonClass}`}
+                    onClick={onButtonClick}
+                    className={buttonClass}
                     style={buttonStyle}
                     disabled={buttonDisabled}
+                    type="button"
                 >
                     {buttonContent}
                 </Button>

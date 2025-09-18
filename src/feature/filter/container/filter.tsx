@@ -1,6 +1,6 @@
 "use client";
 
-import {Grid2X2, FunnelX} from "lucide-react";
+import {Grid2X2} from "lucide-react";
 import {SearchBar} from "@/feature/filter/ui/search-bar";
 import {FilterBar} from "@/feature/filter/ui/filter-bar";
 import {FilterButton} from "@/feature/filter/ui/filter-button";
@@ -12,8 +12,6 @@ export function Filter({
                            maxPrice,
                            onMinChange,
                            onMaxChange,
-                           activeOnly,
-                           onToggleActive,
                            sort,
                            onSortChange,
                        }: {
@@ -58,10 +56,6 @@ export function Filter({
                     onClick={() => onSortChange?.("newest")}
                 >
                     <Grid2X2 className="w-6 h-6 text-white"/>
-                </FilterButton>
-
-                <FilterButton active={activeOnly} onClick={onToggleActive}>
-                    <FunnelX className={`w-6 h-6 ${activeOnly ? "text-[#21ee43]" : "text-[#707579]"}`}/>
                 </FilterButton>
             </div>
         </>
