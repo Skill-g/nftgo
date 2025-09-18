@@ -50,7 +50,7 @@ export function BetControl({
 
     const buttonDisabled = isClosed || isWaitingPlaced ? true : false;
     const buttonStyle: CSSProperties = canCashOut
-        ? { background: "linear-gradient(137deg, #18CD00 5.88%, #54BA39 46.39%, #067200 92.75%)" }
+        ? { backgroundColor: "#FFCC00" }
         : {};
 
     const buttonClass = canCashOut
@@ -65,10 +65,10 @@ export function BetControl({
 
     const buttonContent = canCashOut ? (
         <div className="flex flex-col items-center leading-tight">
-      <span className="text-lg font-bold mb-1 text-white">
+      <span className="text-lg font-bold mb-1 text-black">
         {formatTon(winSum)} <Trans>TON</Trans>
       </span>
-            <span className="text-white"><Trans>ЗАБРАТЬ</Trans></span>
+            <span className="text-black"><Trans>ЗАБРАТЬ</Trans></span>
         </div>
     ) : isClosed ? (
         i18n._(msg`СТАВКИ ЗАКРЫТЫ`)

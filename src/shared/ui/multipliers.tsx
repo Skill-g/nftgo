@@ -1,14 +1,12 @@
-
 'use client';
 import { useLingui } from '@lingui/react';
-import { Trans, t, msg } from '@lingui/macro';
+import { Trans, msg } from '@lingui/macro';
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 import { getBackendHost } from "@/shared/lib/host";
-type QueueItem = { id: string; label: string; createdAt: number };
-type AnimeEasing = "linear" | "easeOutQuad" | string;
 
+type AnimeEasing = "linear" | "easeOutQuad" | string;
 type AnimeParams = {
     targets: Element | Element[] | NodeList | string;
     translateX?: number | [number, number];
@@ -19,21 +17,21 @@ type AnimeParams = {
     complete?: () => void;
     delay?: number;
 };
-
 type AnimeFn = (params: AnimeParams) => unknown;
 type AnimeModule = { default: AnimeFn } | Record<string, unknown>;
 type Mode = "mock" | "live" | "hybrid";
+
+type QueueItem = { id: string; label: string; value: number; createdAt: number };
+type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
 
 function resolveAnime(mod: AnimeModule): AnimeFn | null {
     if (typeof (mod as { default?: unknown }).default === "function") return (mod as { default: AnimeFn }).default;
     if (typeof (mod as unknown) === "function") return mod as unknown as AnimeFn;
     return null;
 }
-
 function isRecord(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
-
 function readMultiplier(v: unknown): number {
     if (isRecord(v)) {
         if (typeof v.multiplier === "number") return v.multiplier;
@@ -43,7 +41,6 @@ function readMultiplier(v: unknown): number {
     }
     return 1;
 }
-
 function readBetId(v: unknown): number | null {
     if (isRecord(v)) {
         if (typeof v.betId === "number") return v.betId;
@@ -53,18 +50,21 @@ function readBetId(v: unknown): number | null {
     }
     return null;
 }
-
 function formatX(v: number) {
     const s = v.toFixed(2);
     const trimmed = s.replace(/\.?0+$/, "");
     return `${trimmed}x`;
 }
-
 function randomMultiplier() {
     const r = Math.random();
     if (r < 0.8) return 1 + Math.random() * 2;
     if (r < 0.98) return 3 + Math.random() * 7;
     return 10 + Math.random() * 90;
+}
+function gradientFor(value: number) {
+    if (value > 5) return "linear-gradient(85deg, rgba(255, 204, 0, 0.80) -9.64%, rgba(132, 214, 255, 0.80) 72.06%)";
+    if (value > 2) return "linear-gradient(85deg, rgba(0, 200, 255, 0.80) -9.64%, rgba(136, 132, 255, 0.80) 63.91%)";
+    return "linear-gradient(85deg, rgba(97, 0, 255, 0.80) -9.64%, rgba(179, 132, 255, 0.80) 72.06%)";
 }
 
 type MultipliersProps = {
@@ -72,11 +72,8 @@ type MultipliersProps = {
     initData: string;
     mode?: Mode;
     maxConcurrent?: number;
-    mockRateMs?: [number, number];
     queueLimit?: number;
 };
-
-type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
 
 export function Multipliers({
                                 roundId,
@@ -85,21 +82,21 @@ export function Multipliers({
                                 maxConcurrent: maxConcurrentProp = 8,
                                 queueLimit = 200,
                             }: MultipliersProps) {
-    const {
-        i18n: i18n
-    } = useLingui();
-
+    const { i18n } = useLingui();
     const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
     const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
+
     const processed = useRef<Set<number>>(new Set());
     const lastSeenEndTs = useRef<number>(0);
     const fetching = useRef(false);
+
     const containerRef = useRef<HTMLDivElement | null>(null);
     const animeRef = useRef<AnimeFn | null>(null);
     const [animeReady, setAnimeReady] = useState(false);
     const rafId = useRef<number | null>(null);
     const gcTimer = useRef<number | null>(null);
+
     const maxConcurrent = maxConcurrentProp;
     const [queue, setQueue] = useState<QueueItem[]>([]);
     const [active, setActive] = useState<QueueItem[]>([]);
@@ -158,10 +155,8 @@ export function Multipliers({
             }
         }
         load();
-        const id = window.setInterval(load, 1000);
-        const onVis = () => {
-            if (!document.hidden) load();
-        };
+        const id = window.setInterval(load, 5000);
+        const onVis = () => { if (!document.hidden) load(); };
         const onFocus = () => load();
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
@@ -201,14 +196,14 @@ export function Multipliers({
             if (processed.current.has(bid)) continue;
             processed.current.add(bid);
             const m = readMultiplier(item);
-            out.push({ id: `${bid}-${uuidv4()}`, label: formatX(m), createdAt: now });
+            out.push({ id: `${bid}-${uuidv4()}`, label: formatX(m), value: m, createdAt: now });
         }
         const sortedHistoryDesc = [...history].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
         for (const row of sortedHistoryDesc) {
             const idNum = row.roundId;
             if (processed.current.has(idNum)) continue;
             processed.current.add(idNum);
-            out.push({ id: `${idNum}-${uuidv4()}`, label: formatX(row.crashMultiplier), createdAt: now });
+            out.push({ id: `${idNum}-${uuidv4()}`, label: formatX(row.crashMultiplier), value: row.crashMultiplier, createdAt: now });
         }
         return out;
     }, [betsReal, history, resolvedMode]);
@@ -218,8 +213,8 @@ export function Multipliers({
         setQueue((prev) => {
             const seenIds = new Set([...prev, ...active].map((item) => item.id));
             const newItems = incomingItems.filter((item) => !seenIds.has(item.id));
-            const next = [...newItems, ...prev].slice(0, queueLimit);
-            return next;
+            const next = [...newItems, ...prev];
+            return next.length > queueLimit ? next.slice(0, queueLimit) : next;
         });
     }, [incomingItems, queueLimit, active]);
 
@@ -279,7 +274,8 @@ export function Multipliers({
                         const seenIds = new Set([...prev, ...active].map((item) => item.id));
                         const newId = uuidv4();
                         if (seenIds.has(newId)) return prev;
-                        const next = [...prev, { id: newId, label: formatX(randomMultiplier()), createdAt: Date.now() }];
+                        const v = randomMultiplier();
+                        const next = [...prev, { id: newId, label: formatX(v), value: v, createdAt: Date.now() }];
                         return next.length > queueLimit ? next.slice(-queueLimit) : next;
                     });
                 }
@@ -294,8 +290,8 @@ export function Multipliers({
                     key={item.id}
                     ref={setNodeRef(item.id)}
                     data-id={item.id}
-                    className="inline-flex items-center px-3 py-1 rounded-md bg-gradient-to-l from-[#4F288F] to-[#8845F5] text-white text-sm font-semibold shadow-md whitespace-nowrap will-change-transform"
-                    style={{ pointerEvents: "none" }}
+                    className="inline-flex items-center px-3 py-1 rounded-md text-white text-sm font-semibold shadow-md whitespace-nowrap will-change-transform"
+                    style={{ pointerEvents: "none", background: gradientFor(item.value) }}
                 >
                     {item.label}
                 </div>
