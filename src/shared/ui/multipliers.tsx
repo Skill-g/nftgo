@@ -1,6 +1,7 @@
-'use client';
-import { useLingui } from '@lingui/react';
-import { Trans, msg } from '@lingui/macro';
+"use client";
+
+import { useLingui } from "@lingui/react";
+import { Trans, msg } from "@lingui/macro";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
@@ -75,13 +76,7 @@ type MultipliersProps = {
     queueLimit?: number;
 };
 
-export function Multipliers({
-                                roundId,
-                                initData,
-                                mode,
-                                maxConcurrent: maxConcurrentProp = 8,
-                                queueLimit = 200,
-                            }: MultipliersProps) {
+export function Multipliers({ roundId, initData, mode, maxConcurrent: maxConcurrentProp = 8, queueLimit = 200 }: MultipliersProps) {
     const { i18n } = useLingui();
     const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
     const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
@@ -149,23 +144,47 @@ export function Multipliers({
                         return all.length > queueLimit ? all.slice(-queueLimit) : all;
                     });
                 }
-            } catch {}
-            finally {
+            } catch {} finally {
                 fetching.current = false;
             }
         }
         load();
         const id = window.setInterval(load, 5000);
-        const onVis = () => { if (!document.hidden) load(); };
+        const onVis = () => {
+            if (!document.hidden) load();
+        };
         const onFocus = () => load();
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
+        let es: EventSource | null = null;
+        try {
+            const esUrl = `${base}/stream`;
+            es = new EventSource(esUrl);
+            es.onmessage = (e) => {
+                try {
+                    const d: HistoryRow | HistoryRow[] = JSON.parse(e.data);
+                    const arr = Array.isArray(d) ? d : [d];
+                    const fresh = arr.filter((r) => !processed.current.has(r.roundId));
+                    if (fresh.length) {
+                        setHistory((prev) => {
+                            const merged = [...prev, ...fresh];
+                            return merged.length > queueLimit ? merged.slice(-queueLimit) : merged;
+                        });
+                    }
+                    for (const r of arr) {
+                        const ts = Date.parse(r.endTime);
+                        if (ts > lastSeenEndTs.current) lastSeenEndTs.current = ts;
+                    }
+                } catch {}
+            };
+        } catch {}
         return () => {
             cancelled = true;
             controller.abort();
             clearInterval(id);
             document.removeEventListener("visibilitychange", onVis);
             window.removeEventListener("focus", onFocus);
+            if (es) es.close();
         };
     }, [queueLimit]);
 

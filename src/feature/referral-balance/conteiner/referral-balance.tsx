@@ -20,7 +20,7 @@ export function ReferralBalance() {
                     <div className="text-[#929292] text-sm mb-1"><Trans>Referral balance</Trans></div>
                     <div className="flex items-center">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center mr-2">
-                            <Image src={'/tonCoin.svg'} alt={i18n._(msg`ton Coin`)} width={18} height={18} />
+                            <Image src={'/ton.svg'} alt={i18n._(msg`ton Coin`)} width={18} height={18} />
                         </div>
                         <span className="text-white text-xl font-bold">
               {referralData?.referralBalance.toFixed(2) || "0.00"}

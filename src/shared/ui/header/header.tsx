@@ -35,7 +35,7 @@ export function Header (){
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="border-2 border-[#533189] rounded-lg px-2 py-1 flex items-center gap-2">
-                            <Image src={'/tonCoin.svg'} alt={i18n._(msg`ton Coin`)} width={18} height={18}/>
+                            <Image src={'/ton.svg'} alt={i18n._(msg`ton Coin`)} width={18} height={18}/>
                             <span className="text-white text-lg font-semibold">{balanceText}</span>
                             <Button
                                 onClick={() => setShowDepositModal(true)}
@@ -67,7 +67,7 @@ export function Header (){
 
                 <div className="flex items-center gap-2">
                     <div className="border-2 border-[#533189] rounded-lg px-2 py-1 flex items-center gap-2">
-                        <Image src={'/tonCoin.svg'} alt={i18n._(msg`ton Coin`)} width={18} height={18}/>
+                        <Image src={'/ton.svg'} alt={i18n._(msg`ton Coin`)} width={18} height={18}/>
                         <span className="text-white text-lg font-semibold">{balanceText}</span>
                         <Button
                             onClick={() => setShowDepositModal(true)}

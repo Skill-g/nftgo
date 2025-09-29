@@ -36,7 +36,7 @@ export function BettingSection({
         <Card className="bg-[#231c46] border-none py-4">
             <CardContent className="px-4 gap-[1px]">
                 <div className="mb-2">
-                    <span className="text-[#969696] text-sm"><Trans>Выбрать тип ставки</Trans></span>
+                    <span className="text-[#BCBCBC] text-sm"><Trans>Выбрать тип ставки</Trans></span>
                 </div>
                 <BetTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                 <div className="space-y-2">

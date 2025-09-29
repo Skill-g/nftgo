@@ -33,7 +33,7 @@ export function GiftCard({
             <div className={`${styles.menuContainer} flex pl-2 pr-2 pt-1 pb-1 text-center w-max items-center gap-1 mb-2`}>
                 <span className="text-white text-center text-xs font-semibold">{price.toFixed(3)}</span>
                 <div className="w-4 h-4 rounded-full flex items-center justify-center">
-                    <Image src={"/tonCoin.svg"} alt={i18n._(msg`ton coin`)} width={18} height={18} />
+                    <Image src={"/ton.svg"} alt={i18n._(msg`ton coin`)} width={18} height={18} />
                 </div>
             </div>
             <div className="relative flex ">

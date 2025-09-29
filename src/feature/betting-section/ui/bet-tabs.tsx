@@ -1,6 +1,7 @@
 import { Trans, t } from '@lingui/macro';
 import {Button} from "@/shared/ui/button";
-import {Wallet, Lock} from "lucide-react";
+import {Wallet} from "lucide-react";
+import Image from "next/image";
 
 export function BetTabs({activeTab, setActiveTab}: {activeTab: string, setActiveTab: (activeTab: string) => void}) {
 
@@ -9,18 +10,18 @@ export function BetTabs({activeTab, setActiveTab}: {activeTab: string, setActive
             <Button
                 onClick={() => setActiveTab("balance")}
                 className={`flex-1 ${
-                    activeTab === "balance" ? " rounded-[10px] bg-[#8845f5] text-white" : "bg-[#262352] text-[#969696]"
+                    activeTab === "balance" ? " rounded-[10px] bg-[#8845f5] text-white" : "bg-[#262352] text-[#FFFFFF]"
                 }`}
             >
-                <Wallet className="w-4 h-4 mr-2"/><Trans>Баланс</Trans></Button>
+                <Wallet className="w-4 h-4"/><Trans>Баланс</Trans></Button>
             <Button
                 onClick={() => setActiveTab("inventory")}
                 disabled={true}
                 className={`flex-1 ${
-                    activeTab === "inventory" ? "bg-[#8845f5] text-white" : "bg-[#262352]text-[#969696]"
+                    activeTab === "inventory" ? "bg-[#8845f5] text-white" : "bg-[#262352]text-[#FFFFFF]"
                 }`}
             >
-                <Lock className="w-4 h-4 mr-2"/><Trans>Инвентарь</Trans></Button>
+                <Image src={'/lock.svg'} width={20} height={20} alt={'lock'} className="w-4 h-4"></Image><Trans>Инвентарь</Trans></Button>
         </div>
     );
 }

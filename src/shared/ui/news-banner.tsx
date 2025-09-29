@@ -1,12 +1,13 @@
 'use client'
 
-import { Trans } from '@lingui/macro'
-import { Card, CardContent } from "@/shared/ui/card"
-import { Button } from "@/shared/ui/button"
-import { useOnlineUsersContext } from "@/shared/context/OnlineUsersContext"
+import {Trans} from '@lingui/macro'
+import {Card, CardContent} from "@/shared/ui/card"
+import {Button} from "@/shared/ui/button"
+import Image from 'next/image'
+import {useOnlineUsersContext} from "@/shared/context/OnlineUsersContext"
 
 export function NewsBanner() {
-    const { onlineCount, loading, error } = useOnlineUsersContext()
+    const {onlineCount, loading, error} = useOnlineUsersContext()
 
     const openNews = () => {
         const url = 'https://t.me/NFTgo777'
@@ -34,8 +35,7 @@ export function NewsBanner() {
 
             <div className="bg-[#163200] border-1 border-white/50 rounded-lg p-3 flex items-center gap-2">
                 <div className="flex gap-1 text-[#23c265]">
-                    <div className="live-text"><Trans>Live</Trans></div>
-                    <div className="live-dot pulse"><Trans>•</Trans></div>
+                    <Image src={'/user.svg'} width={20} height={20} alt={'user'}></Image>
                 </div>
                 {loading ? (
                     <span className="text-white font-bold">0</span>

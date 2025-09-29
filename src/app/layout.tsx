@@ -18,8 +18,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     const imageUrls: string[] = [
-        '/tonCoin.svg','/file.svg','/globe.svg','/logo.svg','/next.svg','/nft-1.png',
-        '/tonCoin.svg','/tonkeeper.svg','/vercel.svg','/window.svg',
+        '/ton.svg','/file.svg','/globe.svg','/logo.svg','/next.svg','/nft-1.png',
+        '/ton.svg','/tonkeeper.svg','/vercel.svg','/window.svg',
         '/bottomNav/friends.svg','/bottomNav/market.svg','/bottomNav/profile.svg',
         '/bottomNav/rocket.svg','/bottomNav/top.svg',
         '/friends/nftGoLogo.png','/friends/ticket.png',

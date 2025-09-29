@@ -30,10 +30,8 @@ export default function Page() {
             if (!user?.initData || !roundId) return;
             const host = getBackendHost();
             if (!host) return;
-
             const amount = bets[index].amount;
             setOptimistic(-amount);
-
             try {
                 const res = await fetch(`https://${host}/api/game/${roundId}/bets`, {
                     method: "POST",
@@ -92,12 +90,7 @@ export default function Page() {
             <Multipliers roundId={roundId} initData={initData} />
             <div className="bg-[#8845F533]/20 h-[2px] w-[100%]" />
             {user?.initData && (
-                <GameArea
-                    resetBets={resetBets}
-                    setGamePhase={setGamePhase}
-                    setCurrentMultiplier={setCurrentMultiplier}
-                    setRoundId={setRoundId}
-                />
+                <GameArea resetBets={resetBets} setGamePhase={setGamePhase} setCurrentMultiplier={setCurrentMultiplier} setRoundId={setRoundId} />
             )}
             <BettingSection
                 bets={bets}

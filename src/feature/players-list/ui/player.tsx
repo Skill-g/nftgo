@@ -29,7 +29,7 @@ export function Player({ name, bet, avatarUrl }: { name: string; bet: number; av
             <div className="flex items-center gap-2">
                 <span className="text-white font-bold">{bet}</span>
                 <div className="w-6 h-6 rounded-full flex items-center justify-center">
-                    <Image src={"/tonCoin.svg"} alt={i18n._(msg`ton coin`)} width={20} height={20} />
+                    <Image src={"/ton.svg"} alt={i18n._(msg`ton coin`)} width={20} height={20} />
                 </div>
             </div>
         </div>

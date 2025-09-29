@@ -3,7 +3,7 @@
 import { useLingui } from '@lingui/react';
 import { Trans, msg } from '@lingui/macro';
 import { useUserContext } from "@/shared/context/UserContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CodeModal } from "@/feature/code-modal";
 import { Button } from "@/shared/ui/button";
 import { SquaresUnite } from "lucide-react";
@@ -11,10 +11,6 @@ import { Banner } from "@/shared/ui/banner";
 import Image from "next/image";
 import { ReferralBalance } from "@/feature/referral-balance";
 import { FriendsList } from "@/feature/friends-list";
-
-function isiOS() {
-    return /iP(hone|ad|od)/.test(navigator.userAgent);
-}
 
 type NavigatorWithShare = Navigator & {
     share?: (data: ShareData) => Promise<void>;
@@ -24,6 +20,10 @@ type CopyOkVia = 'clipboard' | 'execCommand';
 type CopyResult =
     | { ok: true; via: CopyOkVia }
     | { ok: false; error: unknown };
+
+function isiOSUserAgent(ua: string) {
+    return /iP(hone|ad|od)/.test(ua);
+}
 
 async function copyTextRobust(text: string): Promise<CopyResult> {
     if (navigator.clipboard?.writeText) {
@@ -37,7 +37,7 @@ async function copyTextRobust(text: string): Promise<CopyResult> {
         ta.value = text;
         ta.setAttribute('readonly', '');
         ta.style.position = 'fixed';
-        ta.style.top = isiOS() ? '0' : '-9999px';
+        ta.style.top = '0';
         ta.style.left = '-9999px';
         ta.style.opacity = '0';
         document.body.appendChild(ta);
@@ -61,6 +61,11 @@ export default function Page() {
     const { i18n } = useLingui();
     const [showPromoModal, setShowPromoModal] = useState(false);
     const { user, loading, error } = useUserContext();
+    const [isIOS, setIsIOS] = useState(false);
+
+    useEffect(() => {
+        setIsIOS(isiOSUserAgent(navigator.userAgent));
+    }, []);
 
     const handleInvite = async () => {
         if (!user) return;
@@ -148,14 +153,16 @@ export default function Page() {
                     <Trans>Пригласить друга</Trans>
                 </Button>
                 <div className="flex justify-end">
-                    <Button
-                        type="button"
-                        className="bg-gradient-to-r from-[#6100FF] to-[#B384FF] hover:bg-[#533189] text-white rounded-[12px] p-4 w-[45px] h-[45px]"
-                        onClick={handleCopyLink}
-                        onTouchEnd={(e) => { e.preventDefault(); handleCopyLink(); }}
-                    >
-                        <SquaresUnite className="w-12 h-12" />
-                    </Button>
+                    {!isIOS && (
+                        <Button
+                            type="button"
+                            className="bg-gradient-to-r from-[#6100FF] to-[#B384FF] hover:bg-[#533189] text-white rounded-[12px] p-4 w-[45px] h-[45px]"
+                            onClick={handleCopyLink}
+                            onTouchEnd={(e) => { e.preventDefault(); handleCopyLink(); }}
+                        >
+                            <SquaresUnite className="w-12 h-12" />
+                        </Button>
+                    )}
                 </div>
             </div>
             <CodeModal showPromoModal={showPromoModal} setShowPromoModal={setShowPromoModal} />
