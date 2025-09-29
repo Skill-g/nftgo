@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Multipliers } from "@/shared/ui/multipliers";
 import { NewsBanner } from "@/shared/ui/news-banner";
 import { GameArea } from "@/shared/ui/gameArea/game-area";
@@ -24,6 +24,7 @@ export default function Page() {
     const [gamePhase, setGamePhase] = useState("waiting");
     const [currentMultiplier, setCurrentMultiplier] = useState(1);
     const [roundId, setRoundId] = useState<number | null>(null);
+    const [historyTrigger, setHistoryTrigger] = useState(0);
 
     const placeBet = useCallback(
         async (index: number) => {
@@ -84,10 +85,16 @@ export default function Page() {
         [user?.initData, roundId, bets, refresh]
     );
 
+    useEffect(() => {
+        if (roundId !== null) {
+            setHistoryTrigger((p) => p + 1);
+        }
+    }, [roundId]);
+
     return (
         <div className="flex flex-col gap-3">
             <NewsBanner />
-            <Multipliers roundId={roundId} initData={initData} pollMs={1000} />
+            <Multipliers roundId={roundId} initData={initData} pollMs={1000} trigger={historyTrigger} />
             <div className="bg-[#8845F533]/20 h-[2px] w-[100%]" />
             {user?.initData && (
                 <GameArea resetBets={resetBets} setGamePhase={setGamePhase} setCurrentMultiplier={setCurrentMultiplier} setRoundId={setRoundId} />

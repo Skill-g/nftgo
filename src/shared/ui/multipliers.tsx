@@ -20,7 +20,6 @@ type AnimeParams = {
 };
 type AnimeFn = (params: AnimeParams) => unknown;
 type AnimeModule = { default: AnimeFn } | Record<string, unknown>;
-type Mode = "mock" | "live" | "hybrid";
 
 type QueueItem = { id: string; label: string; value: number; createdAt: number };
 type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
@@ -56,12 +55,6 @@ function formatX(v: number) {
     const trimmed = s.replace(/\.?0+$/, "");
     return `${trimmed}x`;
 }
-function randomMultiplier() {
-    const r = Math.random();
-    if (r < 0.8) return 1 + Math.random() * 2;
-    if (r < 0.98) return 3 + Math.random() * 7;
-    return 10 + Math.random() * 90;
-}
 function gradientFor(value: number) {
     if (value > 5) return "linear-gradient(85deg, rgba(255, 204, 0, 0.80) -9.64%, rgba(132, 214, 255, 0.80) 72.06%)";
     if (value > 2) return "linear-gradient(85deg, rgba(0, 200, 255, 0.80) -9.64%, rgba(136, 132, 255, 0.80) 63.91%)";
@@ -71,23 +64,21 @@ function gradientFor(value: number) {
 type MultipliersProps = {
     roundId: number | null;
     initData: string;
-    mode?: Mode;
     maxConcurrent?: number;
     queueLimit?: number;
     pollMs?: number;
+    trigger?: number;
 };
 
 export function Multipliers({
                                 roundId,
                                 initData,
-                                mode,
                                 maxConcurrent: maxConcurrentProp = 8,
                                 queueLimit = 200,
                                 pollMs = 1000,
+                                trigger,
                             }: MultipliersProps) {
     const { i18n } = useLingui();
-    const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
-    const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
 
     const processedHistory = useRef<Set<number>>(new Set());
@@ -101,6 +92,10 @@ export function Multipliers({
     const rafId = useRef<number | null>(null);
     const gcTimer = useRef<number | null>(null);
     const pollTimer = useRef<number | null>(null);
+    const controllerRef = useRef(new AbortController());
+
+    const host = getBackendHost();
+    const base = `https://${host}/api/game/history`;
 
     const maxConcurrent = maxConcurrentProp;
     const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -110,6 +105,28 @@ export function Multipliers({
 
     const setNodeRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
         nodeMapRef.current.set(id, el);
+    }, []);
+
+    const load = useCallback(async () => {
+        if (fetching.current) return;
+        fetching.current = true;
+        try {
+            const url = `${base}?_=${Date.now()}`;
+            const res = await fetch(url, {
+                cache: "no-store",
+                headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+                signal: controllerRef.current.signal
+            });
+            if (!res.ok) return;
+            const data: HistoryRow[] = await res.json();
+            if (!Array.isArray(data)) return;
+
+            setHistory(data);
+            lastFetchTime.current = Date.now();
+        } catch {}
+        finally {
+            fetching.current = false;
+        }
     }, []);
 
     useEffect(() => {
@@ -128,32 +145,7 @@ export function Multipliers({
     }, []);
 
     useEffect(() => {
-        const host = getBackendHost();
-        const base = `https://${host}/api/game/history`;
-        const controller = new AbortController();
-
-        const load = async () => {
-            if (fetching.current) return;
-            fetching.current = true;
-            try {
-                const url = `${base}?_=${Date.now()}`;
-                const res = await fetch(url, {
-                    cache: "no-store",
-                    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-                    signal: controller.signal
-                });
-                if (!res.ok) return;
-                const data: HistoryRow[] = await res.json();
-                if (!Array.isArray(data)) return;
-
-                setHistory(data);
-                lastFetchTime.current = Date.now();
-            } catch {}
-            finally {
-                fetching.current = false;
-            }
-        };
-
+        controllerRef.current = new AbortController();
         load();
 
         if (pollTimer.current) window.clearInterval(pollTimer.current);
@@ -167,13 +159,17 @@ export function Multipliers({
         window.addEventListener("focus", onFocus);
 
         return () => {
-            controller.abort();
+            controllerRef.current.abort();
             if (pollTimer.current) window.clearInterval(pollTimer.current);
             pollTimer.current = null;
             document.removeEventListener("visibilitychange", onVis);
             window.removeEventListener("focus", onFocus);
         };
-    }, [pollMs]);
+    }, [pollMs, load]);
+
+    useEffect(() => {
+        if (trigger) load();
+    }, [trigger, load]);
 
     useEffect(() => {
         if (gcTimer.current) window.clearInterval(gcTimer.current);
@@ -200,8 +196,6 @@ export function Multipliers({
     }, [queueLimit]);
 
     useEffect(() => {
-        if (resolvedMode === "mock") return;
-
         const newItems: QueueItem[] = [];
         const now = Date.now();
 
@@ -243,7 +237,7 @@ export function Multipliers({
                 return combined.length > queueLimit ? combined.slice(0, queueLimit) : combined;
             });
         }
-    }, [betsReal, history, resolvedMode, queueLimit, active]);
+    }, [betsReal, history, queueLimit, active]);
 
     useEffect(() => {
         if (!containerRef.current || !queue.length || active.length >= maxConcurrent) return;
@@ -296,19 +290,9 @@ export function Multipliers({
             complete: () => {
                 setActive((prev) => prev.filter((p) => p.id !== current.id));
                 nodeMapRef.current.delete(current.id);
-                if (resolvedMode === "mock" || resolvedMode === "hybrid") {
-                    setQueue((prev) => {
-                        const seenIds = new Set([...prev, ...active].map((item) => item.id));
-                        const newId = uuidv4();
-                        if (seenIds.has(newId)) return prev;
-                        const v = randomMultiplier();
-                        const next = [...prev, { id: newId, label: formatX(v), value: v, createdAt: Date.now() }];
-                        return next.length > queueLimit ? next.slice(-queueLimit) : next;
-                    });
-                }
             },
         });
-    }, [active, queueLimit, resolvedMode, animeReady]);
+    }, [active, queueLimit, animeReady]);
 
     return (
         <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label={i18n._(msg`multipliers-stream`)}>
