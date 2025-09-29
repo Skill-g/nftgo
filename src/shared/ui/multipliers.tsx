@@ -1,7 +1,7 @@
 "use client";
 
 import { useLingui } from "@lingui/react";
-import { Trans, msg } from "@lingui/macro";
+import { msg } from "@lingui/macro";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
@@ -74,9 +74,17 @@ type MultipliersProps = {
     mode?: Mode;
     maxConcurrent?: number;
     queueLimit?: number;
+    pollMs?: number;
 };
 
-export function Multipliers({ roundId, initData, mode, maxConcurrent: maxConcurrentProp = 8, queueLimit = 200 }: MultipliersProps) {
+export function Multipliers({
+                                roundId,
+                                initData,
+                                mode,
+                                maxConcurrent: maxConcurrentProp = 8,
+                                queueLimit = 200,
+                                pollMs = 1000,
+                            }: MultipliersProps) {
     const { i18n } = useLingui();
     const envMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
     const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
@@ -91,6 +99,7 @@ export function Multipliers({ roundId, initData, mode, maxConcurrent: maxConcurr
     const [animeReady, setAnimeReady] = useState(false);
     const rafId = useRef<number | null>(null);
     const gcTimer = useRef<number | null>(null);
+    const pollTimer = useRef<number | null>(null);
 
     const maxConcurrent = maxConcurrentProp;
     const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -118,12 +127,11 @@ export function Multipliers({ roundId, initData, mode, maxConcurrent: maxConcurr
     }, []);
 
     useEffect(() => {
-        let cancelled = false;
         const host = getBackendHost();
         const base = `https://${host}/api/game/history`;
         const controller = new AbortController();
-        async function load() {
-            if (cancelled || fetching.current) return;
+        const load = async () => {
+            if (fetching.current) return;
             fetching.current = true;
             try {
                 const url = `${base}?_=${Date.now()}`;
@@ -134,59 +142,40 @@ export function Multipliers({ roundId, initData, mode, maxConcurrent: maxConcurr
                 const sortedByTimeDesc = [...data].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
                 const fresh = sortedByTimeDesc.filter((r) => {
                     const t = Date.parse(r.endTime);
-                    return t > lastSeenEndTs.current && !processed.current.has(r.roundId);
+                    return t > lastSeenEndTs.current || !processed.current.has(r.roundId);
                 });
                 if (fresh.length) {
                     const maxTs = fresh.reduce((m, r) => Math.max(m, Date.parse(r.endTime)), lastSeenEndTs.current);
                     lastSeenEndTs.current = maxTs;
                     setHistory((prev) => {
-                        const all = [...prev, ...fresh];
-                        return all.length > queueLimit ? all.slice(-queueLimit) : all;
+                        const known = new Set(prev.map((p) => p.roundId));
+                        const merged = [...prev];
+                        for (const f of fresh) if (!known.has(f.roundId)) merged.push(f);
+                        return merged.length > queueLimit ? merged.slice(-queueLimit) : merged;
                     });
                 }
-            } catch {} finally {
+            } catch {}
+            finally {
                 fetching.current = false;
             }
-        }
+        };
         load();
-        const id = window.setInterval(load, 5000);
+        if (pollTimer.current) window.clearInterval(pollTimer.current);
+        pollTimer.current = window.setInterval(load, Math.max(500, pollMs)) as unknown as number;
         const onVis = () => {
             if (!document.hidden) load();
         };
         const onFocus = () => load();
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
-        let es: EventSource | null = null;
-        try {
-            const esUrl = `${base}/stream`;
-            es = new EventSource(esUrl);
-            es.onmessage = (e) => {
-                try {
-                    const d: HistoryRow | HistoryRow[] = JSON.parse(e.data);
-                    const arr = Array.isArray(d) ? d : [d];
-                    const fresh = arr.filter((r) => !processed.current.has(r.roundId));
-                    if (fresh.length) {
-                        setHistory((prev) => {
-                            const merged = [...prev, ...fresh];
-                            return merged.length > queueLimit ? merged.slice(-queueLimit) : merged;
-                        });
-                    }
-                    for (const r of arr) {
-                        const ts = Date.parse(r.endTime);
-                        if (ts > lastSeenEndTs.current) lastSeenEndTs.current = ts;
-                    }
-                } catch {}
-            };
-        } catch {}
         return () => {
-            cancelled = true;
             controller.abort();
-            clearInterval(id);
+            if (pollTimer.current) window.clearInterval(pollTimer.current);
+            pollTimer.current = null;
             document.removeEventListener("visibilitychange", onVis);
             window.removeEventListener("focus", onFocus);
-            if (es) es.close();
         };
-    }, [queueLimit]);
+    }, [queueLimit, pollMs]);
 
     useEffect(() => {
         if (gcTimer.current) window.clearInterval(gcTimer.current);

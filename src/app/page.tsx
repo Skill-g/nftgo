@@ -87,7 +87,7 @@ export default function Page() {
     return (
         <div className="flex flex-col gap-3">
             <NewsBanner />
-            <Multipliers roundId={roundId} initData={initData} />
+            <Multipliers roundId={roundId} initData={initData} pollMs={1000} />
             <div className="bg-[#8845F533]/20 h-[2px] w-[100%]" />
             {user?.initData && (
                 <GameArea resetBets={resetBets} setGamePhase={setGamePhase} setCurrentMultiplier={setCurrentMultiplier} setRoundId={setRoundId} />
