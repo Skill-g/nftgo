@@ -2,7 +2,7 @@
 
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 import { getBackendHost } from "@/shared/lib/host";
@@ -90,8 +90,9 @@ export function Multipliers({
     const resolvedMode: Mode = mode ?? (envMock ? "mock" : "live");
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
 
-    const processed = useRef<Set<number>>(new Set());
-    const lastSeenEndTs = useRef<number>(0);
+    const processedHistory = useRef<Set<number>>(new Set());
+    const processedBets = useRef<Set<number>>(new Set());
+    const lastFetchTime = useRef<number>(0);
     const fetching = useRef(false);
 
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -130,44 +131,41 @@ export function Multipliers({
         const host = getBackendHost();
         const base = `https://${host}/api/game/history`;
         const controller = new AbortController();
+
         const load = async () => {
             if (fetching.current) return;
             fetching.current = true;
             try {
                 const url = `${base}?_=${Date.now()}`;
-                const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", Pragma: "no-cache" }, signal: controller.signal });
+                const res = await fetch(url, {
+                    cache: "no-store",
+                    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+                    signal: controller.signal
+                });
                 if (!res.ok) return;
                 const data: HistoryRow[] = await res.json();
                 if (!Array.isArray(data)) return;
-                const sortedByTimeDesc = [...data].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
-                const fresh = sortedByTimeDesc.filter((r) => {
-                    const t = Date.parse(r.endTime);
-                    return t > lastSeenEndTs.current || !processed.current.has(r.roundId);
-                });
-                if (fresh.length) {
-                    const maxTs = fresh.reduce((m, r) => Math.max(m, Date.parse(r.endTime)), lastSeenEndTs.current);
-                    lastSeenEndTs.current = maxTs;
-                    setHistory((prev) => {
-                        const known = new Set(prev.map((p) => p.roundId));
-                        const merged = [...prev];
-                        for (const f of fresh) if (!known.has(f.roundId)) merged.push(f);
-                        return merged.length > queueLimit ? merged.slice(-queueLimit) : merged;
-                    });
-                }
+
+                setHistory(data);
+                lastFetchTime.current = Date.now();
             } catch {}
             finally {
                 fetching.current = false;
             }
         };
+
         load();
+
         if (pollTimer.current) window.clearInterval(pollTimer.current);
         pollTimer.current = window.setInterval(load, Math.max(500, pollMs)) as unknown as number;
+
         const onVis = () => {
             if (!document.hidden) load();
         };
         const onFocus = () => load();
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
+
         return () => {
             controller.abort();
             if (pollTimer.current) window.clearInterval(pollTimer.current);
@@ -175,16 +173,24 @@ export function Multipliers({
             document.removeEventListener("visibilitychange", onVis);
             window.removeEventListener("focus", onFocus);
         };
-    }, [queueLimit, pollMs]);
+    }, [pollMs]);
 
     useEffect(() => {
         if (gcTimer.current) window.clearInterval(gcTimer.current);
         gcTimer.current = window.setInterval(() => {
-            if (processed.current.size > queueLimit * 3) {
-                const ids = Array.from(processed.current).sort((a, b) => a - b);
-                const keepFrom = Math.max(0, ids.length - queueLimit * 2);
-                const toRemove = ids.slice(0, keepFrom);
-                for (const id of toRemove) processed.current.delete(id);
+            const totalProcessed = processedHistory.current.size + processedBets.current.size;
+            if (totalProcessed > queueLimit * 3) {
+                const historyIds = Array.from(processedHistory.current).sort((a, b) => a - b);
+                const betIds = Array.from(processedBets.current).sort((a, b) => a - b);
+
+                if (historyIds.length > queueLimit) {
+                    const toKeep = historyIds.slice(-queueLimit);
+                    processedHistory.current = new Set(toKeep);
+                }
+                if (betIds.length > queueLimit) {
+                    const toKeep = betIds.slice(-queueLimit);
+                    processedBets.current = new Set(toKeep);
+                }
             }
         }, 10000) as unknown as number;
         return () => {
@@ -193,38 +199,51 @@ export function Multipliers({
         };
     }, [queueLimit]);
 
-    const incomingItems = useMemo(() => {
-        if (resolvedMode === "mock") return [] as QueueItem[];
-        const out: QueueItem[] = [];
+    useEffect(() => {
+        if (resolvedMode === "mock") return;
+
+        const newItems: QueueItem[] = [];
         const now = Date.now();
+
         const betsArray = Array.isArray(betsReal) ? betsReal : [betsReal];
         for (const item of betsArray) {
             const bid = readBetId(item);
             if (bid === null) continue;
-            if (processed.current.has(bid)) continue;
-            processed.current.add(bid);
+            if (processedBets.current.has(bid)) continue;
+            processedBets.current.add(bid);
             const m = readMultiplier(item);
-            out.push({ id: `${bid}-${uuidv4()}`, label: formatX(m), value: m, createdAt: now });
+            newItems.push({
+                id: `bet-${bid}-${uuidv4()}`,
+                label: formatX(m),
+                value: m,
+                createdAt: now
+            });
         }
-        const sortedHistoryDesc = [...history].sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime));
-        for (const row of sortedHistoryDesc) {
-            const idNum = row.roundId;
-            if (processed.current.has(idNum)) continue;
-            processed.current.add(idNum);
-            out.push({ id: `${idNum}-${uuidv4()}`, label: formatX(row.crashMultiplier), value: row.crashMultiplier, createdAt: now });
-        }
-        return out;
-    }, [betsReal, history, resolvedMode]);
 
-    useEffect(() => {
-        if (!incomingItems.length) return;
-        setQueue((prev) => {
-            const seenIds = new Set([...prev, ...active].map((item) => item.id));
-            const newItems = incomingItems.filter((item) => !seenIds.has(item.id));
-            const next = [...newItems, ...prev];
-            return next.length > queueLimit ? next.slice(0, queueLimit) : next;
-        });
-    }, [incomingItems, queueLimit, active]);
+        const sortedHistory = [...history].sort((a, b) =>
+            new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
+        );
+
+        for (const row of sortedHistory) {
+            if (processedHistory.current.has(row.roundId)) continue;
+            processedHistory.current.add(row.roundId);
+            newItems.push({
+                id: `history-${row.roundId}-${uuidv4()}`,
+                label: formatX(row.crashMultiplier),
+                value: row.crashMultiplier,
+                createdAt: now
+            });
+        }
+
+        if (newItems.length > 0) {
+            setQueue((prev) => {
+                const seenIds = new Set([...prev, ...active].map((item) => item.id));
+                const filtered = newItems.filter((item) => !seenIds.has(item.id));
+                const combined = [...filtered, ...prev];
+                return combined.length > queueLimit ? combined.slice(0, queueLimit) : combined;
+            });
+        }
+    }, [betsReal, history, resolvedMode, queueLimit, active]);
 
     useEffect(() => {
         if (!containerRef.current || !queue.length || active.length >= maxConcurrent) return;
