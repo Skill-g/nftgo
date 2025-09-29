@@ -2,7 +2,7 @@
 
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 import { getBackendHost } from "@/shared/lib/host";
@@ -89,7 +89,6 @@ export function Multipliers({
     const containerRef = useRef<HTMLDivElement | null>(null);
     const animeRef = useRef<AnimeFn | null>(null);
     const [animeReady, setAnimeReady] = useState(false);
-    const rafId = useRef<number | null>(null);
     const gcTimer = useRef<number | null>(null);
     const pollTimer = useRef<number | null>(null);
     const controllerRef = useRef(new AbortController());
@@ -121,7 +120,7 @@ export function Multipliers({
             const data: HistoryRow[] = await res.json();
             if (!Array.isArray(data)) return;
 
-            setHistory(data);
+            setHistory([...data]);
             lastFetchTime.current = Date.now();
         } catch {}
         finally {
@@ -239,27 +238,16 @@ export function Multipliers({
         }
     }, [betsReal, history, queueLimit, active]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!containerRef.current || !queue.length || active.length >= maxConcurrent) return;
-        rafId.current = requestAnimationFrame(() => {
-            setActive((prev) => {
-                if (queue.length && prev.length < maxConcurrent) {
-                    const nextItem = queue[0];
-                    if (!prev.some((item) => item.id === nextItem.id)) {
-                        return [...prev, nextItem];
-                    }
-                }
-                return prev;
-            });
-            setQueue((prev) => (prev.length ? prev.slice(1) : prev));
-        });
-        return () => {
-            if (rafId.current) cancelAnimationFrame(rafId.current);
-            rafId.current = null;
-        };
+        const toAdd = maxConcurrent - active.length;
+        if (toAdd > 0) {
+            setActive((prev) => [...prev, ...queue.slice(0, toAdd)]);
+            setQueue((prev) => prev.slice(toAdd));
+        }
     }, [queue, active.length, maxConcurrent]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!containerRef.current || !active.length || !animeRef.current || !animeReady) return;
         const current = active[active.length - 1];
         const el = nodeMapRef.current.get(current.id);
