@@ -9,13 +9,14 @@ import { PlayersList } from "@/feature/players-list";
 import { useUserContext } from "@/shared/context/UserContext";
 import { getBackendHost } from "@/shared/lib/host";
 import { useBalance } from "@/shared/hooks/useBalance";
-import { useGame } from "@/shared/context/GameContext";
+import { useGameStore } from "@/shared/store/game";
 
 export default function Page() {
     const { user } = useUserContext();
     const initData = useMemo(() => user?.initData ?? "", [user]);
     const { setOptimistic, refresh } = useBalance(initData);
 
+    const game = useGameStore();
     const {
         bets,
         setBetAmount,
@@ -27,7 +28,7 @@ export default function Page() {
         setCurrentMultiplier,
         roundId,
         setRoundId,
-    } = useGame();
+    } = game;
 
     const placeBet = useCallback(
         async (index: number) => {
