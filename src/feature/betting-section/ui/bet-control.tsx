@@ -156,8 +156,14 @@ export const BetControl = ({
                     ))}
                 </div>
             </div>
-            <div className="w-full py-2 px-1 h-full">
-                <Button onClick={onButtonClick} className={buttonClass} style={buttonStyle} disabled={buttonDisabled} type="button">
+            <div className="w-full py-2 px-1">
+                <Button
+                    onClick={onButtonClick}
+                    className={`${buttonClass} h-[100%]`}
+                    style={buttonStyle}
+                    disabled={buttonDisabled}
+                    type="button"
+                >
                     {buttonContent}
                 </Button>
             </div>
