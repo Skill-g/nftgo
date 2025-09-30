@@ -22,15 +22,20 @@ type GameActions = {
     setAllBets: (next: Bet[]) => void;
 };
 
-type Ctx = GameState | (GameState & GameActions);
+type Ctx = GameState & GameActions;
 
 const STORAGE_KEY = "game-state";
+
 const defaultState: GameState = {
-    bets: [{ amount: 20, placed: false, betId: null }, { amount: 20, placed: false, betId: null }],
+    bets: [
+        { amount: 20, placed: false, betId: null },
+        { amount: 20, placed: false, betId: null },
+    ],
     gamePhase: "waiting",
     currentMultiplier: 1,
     roundId: null,
 };
+
 const noopActions: GameActions = {
     setBetAmount: () => {},
     setBetPlaced: () => {},
@@ -72,8 +77,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const value: Ctx = useMemo(
         () => ({
             ...state,
-            setBetAmount: (index, value) => setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, amount: value } : b)) })),
-            setBetPlaced: (index, betId) => setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, placed: !!betId, betId } : b)) })),
+            setBetAmount: (index, value) =>
+                setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, amount: value } : b)) })),
+            setBetPlaced: (index, betId) =>
+                setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, placed: !!betId, betId } : b)) })),
             resetBets: () => setState((s) => ({ ...s, bets: s.bets.map((b) => ({ ...b, placed: false, betId: null })) })),
             setGamePhase: (phase) => setState((s) => ({ ...s, gamePhase: phase })),
             setCurrentMultiplier: (v) => setState((s) => ({ ...s, currentMultiplier: v })),
@@ -86,6 +93,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
 
-export function useGame() {
+export function useGame(): Ctx {
     return useContext(GameContext);
 }
