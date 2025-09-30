@@ -47,24 +47,34 @@ export const BetControl = ({
 
     const winSum = useMemo(() => betAmount1 * multiplier, [betAmount1, multiplier]);
 
-    const canCashOut = useMemo(() => placed && !waiting, [placed, waiting]);
-    const canPlace = useMemo(() => !placed && !isActive, [placed, isActive]);
-    const isClosed = useMemo(() => !placed && isActive, [placed, isActive]);
+    const canPlace = useMemo(() => !placed && waiting, [placed, waiting]);
+    const canCashOut = useMemo(() => placed && isActive, [placed, isActive]);
+    const isClosed = useMemo(() => !placed && !waiting, [placed, waiting]);
     const isWaitingPlaced = useMemo(() => placed && waiting, [placed, waiting]);
 
-    const buttonDisabled = isClosed || isWaitingPlaced;
+    const buttonDisabled = useMemo(() => {
+        if (canCashOut) return false;
+        if (canPlace) return false;
+        return true;
+    }, [canCashOut, canPlace]);
+
     const buttonStyle: CSSProperties = canCashOut ? { backgroundColor: "#FFCC00" } : {};
 
     const buttonClass = classNames(
         canCashOut && "text-black rounded-[20px] font-bold w-[100%] h-[100%]",
-        isClosed && "bg-[#1B1636] text-[#969696] rounded-[20px] font-bold w-[100%] h-[100%]",
-        isWaitingPlaced && "bg-[#1B1636] text-white rounded-[20px] font-bold w-[100%] h-[100%]",
-        !canCashOut && !isClosed && !isWaitingPlaced && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white rounded-[20px] font-bold w-[100%] h-[100%]"
+        isClosed && !canCashOut && !canPlace && "bg-[#1B1636] text-[#969696] rounded-[20px] font-bold w-[100%] h-[100%]",
+        isWaitingPlaced && !canCashOut && "bg-[#1B1636] text-white rounded-[20px] font-bold w-[100%] h-[100%]",
+        !canCashOut && canPlace && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white rounded-[20px] font-bold w-[100%] h-[100%]"
     );
 
     const onButtonClick = useCallback(() => {
-        if (canCashOut) onCashOut();
-        else if (canPlace) onPlaceBet();
+        if (canCashOut) {
+            onCashOut();
+            return;
+        }
+        if (canPlace) {
+            onPlaceBet();
+        }
     }, [canCashOut, canPlace, onCashOut, onPlaceBet]);
 
     const buttonContent = useMemo(() => {
@@ -80,12 +90,12 @@ export const BetControl = ({
                 </div>
             );
         }
-        if (isClosed) return i18n._(msg`СТАВКИ ЗАКРЫТЫ`);
         if (isWaitingPlaced) return i18n._(msg`ОЖИДАНИЕ`);
-        return i18n._(msg`СТАВИТЬ`);
-    }, [canCashOut, isClosed, isWaitingPlaced, winSum, i18n]);
+        if (canPlace) return i18n._(msg`СТАВИТЬ`);
+        return i18n._(msg`СТАВКИ ЗАКРЫТЫ`);
+    }, [canCashOut, isWaitingPlaced, canPlace, winSum, i18n]);
 
-    const controlsDisabled = useMemo(() => placed || (!placed && isActive), [placed, isActive]);
+    const controlsDisabled = useMemo(() => placed || !waiting, [placed, waiting]);
 
     return (
         <div className="flex bg-[#262352] rounded-[20px] p-2">
