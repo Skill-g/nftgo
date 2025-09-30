@@ -30,7 +30,7 @@ export function Header (){
                 <div className="flex items-center justify-between px-3 py-3 gap-1">
                     <div className="w-16 h-16 rounded-lg flex items-center justify-center ">
                         <div className="text-xs text-center">
-                            <Image src={'/logo.svg'} width={62} height={48} alt={i18n._(msg`logo`)}/>
+                            <Image src={'/NFT.png'} width={62} height={48} alt={i18n._(msg`logo`)}/>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export function Header (){
             <div className="flex items-center justify-between px-3 py-3 gap-1">
                 <div className="w-16 h-16 rounded-lg flex items-center justify-center ">
                     <div className="text-xs text-center">
-                        <Image src={'/logo.svg'} width={62} height={48} alt={i18n._(msg`logo`)}/>
+                        <Image src={'/NFT.png'} width={62} height={48} alt={i18n._(msg`logo`)}/>
                     </div>
                 </div>
 

@@ -21,7 +21,7 @@ export function BetTabs({activeTab, setActiveTab}: {activeTab: string, setActive
                     activeTab === "inventory" ? "bg-[#8845f5] text-white" : "bg-[#262352]text-[#FFFFFF]"
                 }`}
             >
-                <Image src={'/lock.svg'} width={20} height={20} alt={'lock'} className="w-4 h-4"></Image><Trans>Вывести подарок</Trans></Button>
+                <Image src={'/lock.svg'} width={20} height={20} alt={'lock'} className="w-4 h-4"></Image><Trans>Инвентарь</Trans></Button>
         </div>
     );
 }

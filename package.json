@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"(no tests)\" && exit 0",
     "i18n:extract": "lingui extract",
     "i18n:compile": "powershell -NoProfile -Command \"Remove-Item -Force src/locales/*/messages.js, src/locales/*/messages.mjs, src/locales/*/messages.cjs, src/locales/*/messages.ts; exit $LASTEXITCODE\" && lingui compile --strict",
     "i18n:build": "npm run i18n:extract && npm run i18n:compile",

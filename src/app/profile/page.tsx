@@ -15,7 +15,7 @@ export default function Page() {
     return (
         <div className={"flex flex-col gap-4"}>
             <UserProfile/>
-            <Banner title={i18n._(msg`Инвентарь`)} img={'/profile/lock.svg'}/>
+            <Banner title={i18n._(msg`Вывести подарок`)} img={'/profile/lock.svg'}/>
             <LanguageSelection/>
             <div>
                 <h2 className="text-xl font-bold text-white mb-4"><Trans>История игр</Trans></h2>
