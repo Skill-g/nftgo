@@ -74,9 +74,15 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
     const { i18n } = useLingui();
     const { state } = useGame();
 
-    useEffect(() => { setGamePhase(state.phase); }, [state.phase, setGamePhase]);
-    useEffect(() => { setCurrentMultiplier(state.multiplier); }, [state.multiplier, setCurrentMultiplier]);
-    useEffect(() => { setRoundId(state.roundId ?? null); }, [state.roundId, setRoundId]);
+    useEffect(() => {
+        setGamePhase(state.phase);
+    }, [state.phase, setGamePhase]);
+    useEffect(() => {
+        setCurrentMultiplier(state.multiplier);
+    }, [state.multiplier, setCurrentMultiplier]);
+    useEffect(() => {
+        setRoundId(state.roundId ?? null);
+    }, [state.roundId, setRoundId]);
 
     useEffect(() => {
         if (state.phase === "crashed") {
@@ -87,7 +93,6 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
 
     const uiPhase = usePhaseForUI(state.phase, state.roundId ?? null, 220);
     const isActive = uiPhase !== "waiting" || state.multiplier > 1;
-
     const remainingSec = state.timeToStart;
 
     const trackRef = useRef<HTMLDivElement | null>(null);

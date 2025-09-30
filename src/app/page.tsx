@@ -17,13 +17,12 @@ export default function Page() {
     const { user } = useUserContext();
     const initData = useMemo(() => user?.initData ?? "", [user]);
     const { setOptimistic, refresh } = useBalance(initData);
-
     const { phase, setPhase, multiplier, setMultiplier, roundId, setRoundId } = useGameStore();
     const { bets, setBetAmount, setBetPlaced, resetBets } = useBetsStore();
 
     const gamePhase = phase;
     const setGamePhase = useCallback(
-        (p: string) => setPhase(p === "running" ? "running" : p === "crashed" ? "crashed" : "waiting" as Phase),
+        (p: string) => setPhase(p === "running" ? "running" : p === "crashed" ? "crashed" : ("waiting" as Phase)),
         [setPhase]
     );
     const currentMultiplier = multiplier;
