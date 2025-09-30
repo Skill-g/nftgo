@@ -215,7 +215,7 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                                 bottom: 0,
                                 width: "64px",
                                 height: "64px",
-                                transform: "translate(-50%,0%)",
+                                transform: "translate(340%,0%)",
                                 pointerEvents: "none",
                             }}
                         >

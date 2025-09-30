@@ -2,33 +2,14 @@
 
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 import { getBackendHost } from "@/shared/lib/host";
 
-type AnimeEasing = "linear" | "easeOutQuad" | string;
-type AnimeParams = {
-    targets: Element | Element[] | NodeList | string;
-    translateX?: number | [number, number];
-    translateY?: number | [number, number] | string;
-    opacity?: number | Array<{ value: number; duration?: number; easing?: AnimeEasing }>;
-    duration?: number;
-    easing?: AnimeEasing;
-    complete?: () => void;
-    delay?: number;
-};
-type AnimeFn = (params: AnimeParams) => unknown;
-type AnimeModule = { default: AnimeFn } | Record<string, unknown>;
-
 type QueueItem = { id: string; label: string; value: number; createdAt: number };
 type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
 
-function resolveAnime(mod: AnimeModule): AnimeFn | null {
-    if (typeof (mod as { default?: unknown }).default === "function") return (mod as { default: AnimeFn }).default;
-    if (typeof (mod as unknown) === "function") return mod as unknown as AnimeFn;
-    return null;
-}
 function isRecord(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
 }
@@ -73,44 +54,31 @@ type MultipliersProps = {
 export function Multipliers({
                                 roundId,
                                 initData,
-                                maxConcurrent: maxConcurrentProp = 8,
-                                queueLimit = 200,
+                                maxConcurrent: visibleCount = 8,
+                                queueLimit: _queueLimit = 200,
                                 pollMs = 1000,
                                 trigger,
                             }: MultipliersProps) {
     const { i18n } = useLingui();
-    const { bets: betsReal } = useBetsNowReal(roundId, initData);
-
-    const historySeen = useRef<Map<number, number>>(new Map());
-    const betsSeen = useRef<Map<number, number>>(new Map());
-    const fetching = useRef(false);
-
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const animeRef = useRef<AnimeFn | null>(null);
-    const [animeReady, setAnimeReady] = useState(false);
-    const gcTimer = useRef<number | null>(null);
-    const pollTimer = useRef<number | null>(null);
-    const controllerRef = useRef(new AbortController());
+    const { bets: betsReal } = useBetsNowReal(roundId ?? undefined, initData);
 
     const host = getBackendHost();
     const base = `https://${host}/api/game/history`;
 
-    const maxConcurrent = maxConcurrentProp;
-    const [queue, setQueue] = useState<QueueItem[]>([]);
-    const [active, setActive] = useState<QueueItem[]>([]);
+    const [visible, setVisible] = useState<QueueItem[]>([]);
     const [history, setHistory] = useState<HistoryRow[]>([]);
-    const nodeMapRef = useRef(new Map<string, HTMLDivElement | null>());
 
-    const setNodeRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
-        nodeMapRef.current.set(id, el);
-    }, []);
+    const historySeen = useRef<Map<number, number>>(new Map());
+    const betsSeen = useRef<Map<number, number>>(new Map());
+    const fetching = useRef(false);
+    const pollTimer = useRef<number | null>(null);
+    const controllerRef = useRef(new AbortController());
 
     const load = useCallback(async () => {
         if (fetching.current) return;
         fetching.current = true;
         try {
-            const url = `${base}?_=${Date.now()}`;
-            const res = await fetch(url, {
+            const res = await fetch(`${base}?_=${Date.now()}`, {
                 cache: "no-store",
                 headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
                 signal: controllerRef.current.signal,
@@ -119,26 +87,10 @@ export function Multipliers({
             const data: HistoryRow[] = await res.json();
             if (!Array.isArray(data)) return;
             setHistory(data);
-        } catch {}
-        finally {
+        } catch {} finally {
             fetching.current = false;
         }
-    }, []);
-
-    useEffect(() => {
-        let mounted = true;
-        import("animejs").then((m) => {
-            if (!mounted) return;
-            const fn = resolveAnime(m as AnimeModule);
-            if (fn) {
-                animeRef.current = fn;
-                setAnimeReady(true);
-            }
-        });
-        return () => {
-            mounted = false;
-        };
-    }, []);
+    }, [base]);
 
     useEffect(() => {
         controllerRef.current = new AbortController();
@@ -167,36 +119,8 @@ export function Multipliers({
     }, [trigger, load]);
 
     useEffect(() => {
-        if (gcTimer.current) window.clearInterval(gcTimer.current);
-        gcTimer.current = window.setInterval(() => {
-            if (historySeen.current.size > queueLimit * 3) {
-                const ids = Array.from(historySeen.current.keys()).slice(-queueLimit);
-                const next = new Map<number, number>();
-                for (const id of ids) {
-                    const val = historySeen.current.get(id);
-                    if (typeof val === "number") next.set(id, val);
-                }
-                historySeen.current = next;
-            }
-            if (betsSeen.current.size > queueLimit * 3) {
-                const ids = Array.from(betsSeen.current.keys()).slice(-queueLimit);
-                const next = new Map<number, number>();
-                for (const id of ids) {
-                    const val = betsSeen.current.get(id);
-                    if (typeof val === "number") next.set(id, val);
-                }
-                betsSeen.current = next;
-            }
-        }, 10000) as unknown as number;
-        return () => {
-            if (gcTimer.current) window.clearInterval(gcTimer.current);
-            gcTimer.current = null;
-        };
-    }, [queueLimit]);
-
-    useEffect(() => {
         const now = Date.now();
-        const newItems: QueueItem[] = [];
+        const newBatch: QueueItem[] = [];
 
         const betsArray = Array.isArray(betsReal) ? betsReal : [betsReal];
         for (const item of betsArray) {
@@ -206,7 +130,7 @@ export function Multipliers({
             const prev = betsSeen.current.get(bid);
             if (prev === undefined || prev !== m) {
                 betsSeen.current.set(bid, m);
-                newItems.push({
+                newBatch.push({
                     id: `bet-${bid}-${uuidv4()}`,
                     label: formatX(m),
                     value: m,
@@ -220,7 +144,7 @@ export function Multipliers({
             const prev = historySeen.current.get(row.roundId);
             if (prev === undefined || prev !== row.crashMultiplier) {
                 historySeen.current.set(row.roundId, row.crashMultiplier);
-                newItems.push({
+                newBatch.push({
                     id: `history-${row.roundId}-${uuidv4()}`,
                     label: formatX(row.crashMultiplier),
                     value: row.crashMultiplier,
@@ -229,107 +153,28 @@ export function Multipliers({
             }
         }
 
-        if (newItems.length) {
-            setQueue((prev) => {
-                const seenIds = new Set(prev.map((x) => x.id));
-                const filtered = newItems.filter((x) => !seenIds.has(x.id));
-                const combined = [...filtered, ...prev];
-                return combined.length > queueLimit ? combined.slice(0, queueLimit) : combined;
+        if (newBatch.length) {
+            const ordered = newBatch.sort((a, b) => a.createdAt - b.createdAt);
+            setVisible((prev) => {
+                const next = [...ordered.reverse(), ...prev];
+                const trimmed = next.slice(0, visibleCount);
+                return trimmed;
             });
         }
-    }, [betsReal, history, queueLimit]);
+    }, [betsReal, history, visibleCount]);
 
-    useLayoutEffect(() => {
-        if (!containerRef.current || !queue.length) return;
-        if (active.length >= maxConcurrent) return;
-        const toAdd = Math.max(0, maxConcurrent - active.length);
-        if (toAdd <= 0) return;
-        setActive((prev) => [...prev, ...queue.slice(0, toAdd)]);
-        setQueue((prev) => prev.slice(toAdd));
-    }, [queue, active.length, maxConcurrent]);
-
-    useLayoutEffect(() => {
-        if (!containerRef.current || !active.length) return;
-        const current = active[active.length - 1];
-        const el = nodeMapRef.current.get(current.id);
-        if (!el) return;
-
-        const box = containerRef.current.getBoundingClientRect();
-        const pill = el.getBoundingClientRect();
-        const margin = 12;
-        const fromX = -pill.width - margin;
-        const toX = box.width + margin;
-        const fromY = (containerRef.current.clientHeight - pill.height) / 2;
-
-        const play = () => {
-            el.style.opacity = "0";
-            el.style.transform = `translate(${fromX}px, ${fromY}px)`;
-            const baseDuration = 6500;
-            const jitter = Math.floor(Math.random() * 1000) - 500;
-            const delay = 120 + Math.random() * 240;
-            if (animeRef.current && animeReady) {
-                animeRef.current({
-                    targets: el,
-                    translateX: [fromX, toX],
-                    opacity: [
-                        { value: 0, duration: 0 },
-                        { value: 1, duration: 220, easing: "easeOutQuad" },
-                        { value: 1, duration: baseDuration - 440, easing: "linear" },
-                        { value: 0, duration: 220, easing: "easeOutQuad" },
-                    ],
-                    duration: Math.max(4000, baseDuration + jitter),
-                    easing: "linear",
-                    delay,
-                    complete: () => {
-                        setActive((prev) => prev.filter((p) => p.id !== current.id));
-                        nodeMapRef.current.delete(current.id);
-                    },
-                });
-            } else {
-                el.style.opacity = "1";
-                let raf: number | null = null;
-                const start = performance.now() + delay;
-                const dur = Math.max(4000, baseDuration + jitter);
-                const step = (t: number) => {
-                    const tt = Math.max(0, t - start);
-                    const k = Math.min(1, tt / dur);
-                    const x = fromX + (toX - fromX) * k;
-                    el.style.transform = `translate(${x}px, ${fromY}px)`;
-                    if (k < 1) {
-                        raf = requestAnimationFrame(step);
-                    } else {
-                        setActive((prev) => prev.filter((p) => p.id !== current.id));
-                        nodeMapRef.current.delete(current.id);
-                    }
-                };
-                raf = requestAnimationFrame(step);
-                return () => {
-                    if (raf) cancelAnimationFrame(raf);
-                };
-            }
-        };
-
-        const clean = play();
-        return () => {
-            if (typeof clean === "function") clean();
-        };
-    }, [active, animeReady]);
-
-    const pills = useMemo(() => active, [active]);
+    const pills = useMemo(() => visible, [visible]);
 
     return (
         <div
-            ref={containerRef}
             className="relative h-[30px] w-full overflow-hidden gap-[6px] flex"
             aria-label={i18n._(msg`multipliers-stream`)}
         >
             {pills.map((item) => (
                 <div
                     key={item.id}
-                    ref={setNodeRef(item.id)}
-                    data-id={item.id}
-                    className="inline-flex items-center px-3 py-1 rounded-md text-white text-sm font-semibold shadow-md whitespace-nowrap will-change-transform"
-                    style={{ pointerEvents: "none", background: gradientFor(item.value) }}
+                    className="inline-flex items-center px-3 py-1 rounded-md text-white text-sm font-semibold shadow-md whitespace-nowrap"
+                    style={{ background: gradientFor(item.value) }}
                 >
                     {item.label}
                 </div>
