@@ -60,11 +60,14 @@ export const BetControl = ({
 
     const buttonStyle: CSSProperties = canCashOut ? { backgroundColor: "#FFCC00" } : {};
 
+    const baseActionSize = "h-[64px] min-h-[64px]";
     const buttonClass = classNames(
-        canCashOut && "text-black rounded-[20px] font-bold w-[100%] h-[100%]",
-        isClosed && !canCashOut && !canPlace && "bg-[#1B1636] text-[#969696] rounded-[20px] font-bold w-[100%] h-[100%]",
-        isWaitingPlaced && !canCashOut && "bg-[#1B1636] text-white rounded-[20px] font-bold w-[100%] h-[100%]",
-        !canCashOut && canPlace && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white rounded-[20px] font-bold w-[100%] h-[100%]"
+        "rounded-[20px] font-bold w-full",
+        baseActionSize,
+        canCashOut && "text-black",
+        isClosed && !canCashOut && !canPlace && "bg-[#1B1636] text-[#969696]",
+        isWaitingPlaced && !canCashOut && "bg-[#1B1636] text-white",
+        !canCashOut && canPlace && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white"
     );
 
     const onButtonClick = useCallback(() => {
@@ -80,8 +83,8 @@ export const BetControl = ({
     const buttonContent = useMemo(() => {
         if (canCashOut) {
             return (
-                <div className="flex flex-col items-center leading-tight">
-          <span className="text-lg font-bold mb-1 text-black">
+                <div className="flex flex-col justify-center items-center leading-tight w-full h-full">
+          <span className="text-lg font-bold text-black">
             {formatTon(winSum)} <Trans>TON</Trans>
           </span>
                     <span className="text-black">
@@ -90,9 +93,14 @@ export const BetControl = ({
                 </div>
             );
         }
-        if (isWaitingPlaced) return i18n._(msg`ОЖИДАНИЕ`);
-        if (canPlace) return i18n._(msg`СТАВИТЬ`);
-        return i18n._(msg`СТАВКИ ЗАКРЫТЫ`);
+        return (
+            <div className="flex flex-col justify-center items-center w-full h-full">
+        <span className="text-base">
+          {isWaitingPlaced ? i18n._(msg`ОЖИДАНИЕ`) : canPlace ? i18n._(msg`СТАВИТЬ`) : i18n._(msg`СТАВКИ ЗАКРЫТЫ`)}
+        </span>
+                <span className="opacity-0 select-none">.</span>
+            </div>
+        );
     }, [canCashOut, isWaitingPlaced, canPlace, winSum, i18n]);
 
     const controlsDisabled = useMemo(() => placed || !waiting, [placed, waiting]);

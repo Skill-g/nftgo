@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { useCallback, useMemo } from "react";
 import { BetControl } from "@/feature/betting-section/ui/bet-control";
 
-type Bet = { amount: number; placed: boolean };
+type Bet = { amount: number; betId: number | null };
 type BettingSectionProps = {
     bets: Bet[];
     setBetAmount: (index: number, value: number) => void;
@@ -23,7 +23,6 @@ export function BettingSection({
                                    onCashOut,
                                }: BettingSectionProps) {
     const presetAmounts = [1, 5, 10, 20, 50];
-
     const isWaiting = useMemo(() => gamePhase === "waiting", [gamePhase]);
     const isRunning = useMemo(() => gamePhase === "running", [gamePhase]);
 
@@ -45,7 +44,7 @@ export function BettingSection({
                             presetAmounts={presetAmounts}
                             betAmount1={bet.amount}
                             setBetAmount1={(value: number) => onSetBetAmount(i, value)}
-                            placed={bet.placed}
+                            placed={bet.betId != null}
                             waiting={isWaiting}
                             isActive={isRunning}
                             multiplier={currentMultiplier}
