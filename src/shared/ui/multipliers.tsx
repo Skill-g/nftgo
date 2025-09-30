@@ -17,8 +17,14 @@ function readMultiplier(v: unknown): number {
     if (isRecord(v)) {
         if (typeof v.multiplier === "number") return v.multiplier;
         if (typeof v.crashMultiplier === "number") return v.crashMultiplier;
-        if (typeof v.multiplier === "string") return parseFloat(v.multiplier) || 1;
-        if (typeof v.crashMultiplier === "string") return parseFloat(v.crashMultiplier) || 1;
+        if (typeof v.multiplier === "string") {
+            const n = parseFloat(v.multiplier);
+            return Number.isFinite(n) ? n : 1;
+        }
+        if (typeof v.crashMultiplier === "string") {
+            const n = parseFloat(v.crashMultiplier);
+            return Number.isFinite(n) ? n : 1;
+        }
     }
     return 1;
 }
@@ -26,15 +32,20 @@ function readBetId(v: unknown): number | null {
     if (isRecord(v)) {
         if (typeof v.betId === "number") return v.betId;
         if (typeof v.roundId === "number") return v.roundId;
-        if (typeof v.betId === "string") return parseInt(v.betId, 10) || null;
-        if (typeof v.roundId === "string") return parseInt(v.roundId, 10) || null;
+        if (typeof v.betId === "string") {
+            const n = parseInt(v.betId, 10);
+            return Number.isFinite(n) ? n : null;
+        }
+        if (typeof v.roundId === "string") {
+            const n = parseInt(v.roundId, 10);
+            return Number.isFinite(n) ? n : null;
+        }
     }
     return null;
 }
-function formatX(v: number) {
-    const s = v.toFixed(2);
-    const trimmed = s.replace(/\.?0+$/, "");
-    return `${trimmed}x`;
+function formatX(v: number, frac = 2) {
+    const n = Number.isFinite(v) ? v : 0;
+    return `${n.toFixed(frac)}x`;
 }
 function gradientFor(value: number) {
     if (value > 5) return "linear-gradient(85deg, rgba(255, 204, 0, 0.80) -9.64%, rgba(132, 214, 255, 0.80) 72.06%)";
@@ -113,7 +124,7 @@ export function Multipliers({
     }, [pollMs, load]);
 
     useEffect(() => {
-        if (trigger) load();
+        if (trigger != null) load();
     }, [trigger, load]);
 
     useEffect(() => {
@@ -165,10 +176,7 @@ export function Multipliers({
     const pills = useMemo(() => visible, [visible]);
 
     return (
-        <div
-            className="relative h-[30px] w-full overflow-hidden gap-[6px] flex"
-            aria-label={i18n._(msg`multipliers-stream`)}
-        >
+        <div className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label={i18n._(msg`multipliers-stream`)}>
             {pills.map((item) => (
                 <div
                     key={item.id}
