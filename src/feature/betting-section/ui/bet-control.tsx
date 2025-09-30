@@ -1,4 +1,5 @@
 "use client";
+
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
 import { Button } from "@/shared/ui/button";
@@ -27,7 +28,7 @@ function formatTon(n: number, minFrac = 1, maxFrac = 6): string {
     return Number(n).toFixed(minFrac);
 }
 
-function classNames(...xs: Array<string | false>) {
+function cn(...xs: Array<string | false>) {
     return xs.filter(Boolean).join(" ");
 }
 
@@ -52,22 +53,17 @@ export const BetControl = ({
     const isClosed = useMemo(() => !placed && !waiting, [placed, waiting]);
     const isWaitingPlaced = useMemo(() => placed && waiting, [placed, waiting]);
 
-    const buttonDisabled = useMemo(() => {
-        if (canCashOut) return false;
-        if (canPlace) return false;
-        return true;
-    }, [canCashOut, canPlace]);
+    const buttonDisabled = useMemo(() => !(canCashOut || canPlace), [canCashOut, canPlace]);
 
     const buttonStyle: CSSProperties = canCashOut ? { backgroundColor: "#FFCC00" } : {};
 
-    const baseActionSize = "h-[64px] min-h-[64px]";
-    const buttonClass = classNames(
-        "rounded-[20px] font-bold w-full",
-        baseActionSize,
+    const fixedButtonBox = "h-[64px] min-h-[64px] w-full rounded-[20px] font-bold";
+    const buttonClass = cn(
+        fixedButtonBox,
         canCashOut && "text-black",
+        !canCashOut && canPlace && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white",
         isClosed && !canCashOut && !canPlace && "bg-[#1B1636] text-[#969696]",
-        isWaitingPlaced && !canCashOut && "bg-[#1B1636] text-white",
-        !canCashOut && canPlace && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white"
+        isWaitingPlaced && !canCashOut && "bg-[#1B1636] text-white"
     );
 
     const onButtonClick = useCallback(() => {
@@ -83,22 +79,26 @@ export const BetControl = ({
     const buttonContent = useMemo(() => {
         if (canCashOut) {
             return (
-                <div className="flex flex-col justify-center items-center leading-tight w-full h-full">
-          <span className="text-lg font-bold text-black">
-            {formatTon(winSum)} <Trans>TON</Trans>
-          </span>
-                    <span className="text-black">
-            <Trans>ЗАБРАТЬ</Trans>
-          </span>
+                <div className="grid place-items-center w-full h-full">
+                    <div className="leading-tight text-center">
+                        <div className="text-lg font-bold text-black">
+                            {formatTon(winSum)} <Trans>TON</Trans>
+                        </div>
+                        <div className="text-black">
+                            <Trans>ЗАБРАТЬ</Trans>
+                        </div>
+                    </div>
                 </div>
             );
         }
         return (
-            <div className="flex flex-col justify-center items-center w-full h-full">
-        <span className="text-base">
-          {isWaitingPlaced ? i18n._(msg`ОЖИДАНИЕ`) : canPlace ? i18n._(msg`СТАВИТЬ`) : i18n._(msg`СТАВКИ ЗАКРЫТЫ`)}
-        </span>
-                <span className="opacity-0 select-none">.</span>
+            <div className="grid place-items-center w-full h-full">
+                <div className="leading-tight text-center">
+                    <div className="text-base">
+                        {isWaitingPlaced ? i18n._(msg`ОЖИДАНИЕ`) : canPlace ? i18n._(msg`СТАВИТЬ`) : i18n._(msg`СТАВКИ ЗАКРЫТЫ`)}
+                    </div>
+                    <div className="opacity-0 select-none text-[0px]">.</div>
+                </div>
             </div>
         );
     }, [canCashOut, isWaitingPlaced, canPlace, winSum, i18n]);
@@ -157,7 +157,7 @@ export const BetControl = ({
                     ))}
                 </div>
             </div>
-            <div className="w-[100%] py-2 px-1">
+            <div className="w-full py-2 px-1">
                 <Button onClick={onButtonClick} className={buttonClass} style={buttonStyle} disabled={buttonDisabled} type="button">
                     {buttonContent}
                 </Button>
