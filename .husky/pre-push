@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+set -e
+
+echo "🔍 Lint + TypeCheck + Build before push…"
+
+npm run lint --if-present
+npx tsc --noEmit
+
+export NEXT_TELEMETRY_DISABLED=1
+export NODE_ENV=production
+npm run build
+
+echo "✅ OK — pushing…"
