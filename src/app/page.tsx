@@ -21,10 +21,7 @@ export default function Page() {
     const { bets, setBetAmount, setBetPlaced, resetBets } = useBetsStore();
 
     const gamePhase = phase;
-    const setGamePhase = useCallback(
-        (p: string) => setPhase(p === "running" ? "running" : p === "crashed" ? "crashed" : ("waiting" as Phase)),
-        [setPhase]
-    );
+    const setGamePhase = useCallback((p: string) => setPhase(p === "running" ? "running" : p === "crashed" ? "crashed" : "waiting" as Phase), [setPhase]);
     const currentMultiplier = multiplier;
     const setCurrentMultiplier = setMultiplier;
 
@@ -39,7 +36,7 @@ export default function Page() {
                 const res = await fetch(`https://${host}/api/game/${roundId}/bets`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ initData: user.initData, amount }),
+                    body: JSON.stringify({ initData: user.initData, amount })
                 });
                 if (!res.ok) {
                     await refresh();
@@ -66,7 +63,7 @@ export default function Page() {
                 const res = await fetch(`https://${host}/api/game/${roundId}/cashout`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ initData: user.initData, betId }),
+                    body: JSON.stringify({ initData: user.initData, betId })
                 });
                 if (!res.ok) return;
                 await res.json();

@@ -5,13 +5,13 @@ import { getBackendHost } from "@/shared/lib/host";
 export type GamePhase = "waiting" | "running" | "crashed";
 
 export type WSMessage =
-    | { type: "connected" }
+    | { type: "connected"; roundId?: number; currentMultiplier?: number; betDeadline?: string; gameStartTime?: string; isGamePhase?: boolean; serverSeedHash?: string }
     | { type: "pong"; ts?: number }
     | { type: "round_start"; roundId: number; serverSeedHash?: string; clientSeed?: string; nonce?: number }
     | { type: "game_start"; roundId: number }
     | { type: "multiplier_update"; multiplier: number; timestamp?: number }
     | { type: "game_crash"; crashMultiplier: number; roundId?: number; serverSeed?: string; serverSeedHash?: string }
-    | { type: "state"; phase?: GamePhase; multiplier?: number; roundId?: number }
+    | { type: "state"; phase?: GamePhase; multiplier?: number; roundId?: number; betDeadline?: string; gameStartTime?: string; isGamePhase?: boolean }
     | { type: "error"; message: string };
 
 function normalizeMessage(raw: unknown): WSMessage {
@@ -20,7 +20,15 @@ function normalizeMessage(raw: unknown): WSMessage {
     const t = (obj["type"] ?? obj["event"]) as string | undefined;
     switch (t) {
         case "connected":
-            return { type: "connected" };
+            return {
+                type: "connected",
+                roundId: typeof obj["roundId"] === "number" ? (obj["roundId"] as number) : undefined,
+                currentMultiplier: typeof obj["currentMultiplier"] === "number" ? (obj["currentMultiplier"] as number) : undefined,
+                betDeadline: typeof obj["betDeadline"] === "string" ? (obj["betDeadline"] as string) : undefined,
+                gameStartTime: typeof obj["startTime"] === "string" ? (obj["startTime"] as string) : typeof obj["gameStartTime"] === "string" ? (obj["gameStartTime"] as string) : undefined,
+                isGamePhase: typeof obj["isGamePhase"] === "boolean" ? (obj["isGamePhase"] as boolean) : undefined,
+                serverSeedHash: typeof obj["serverSeedHash"] === "string" ? (obj["serverSeedHash"] as string) : undefined
+            };
         case "pong":
             return { type: "pong", ts: typeof obj["ts"] === "number" ? (obj["ts"] as number) : undefined };
         case "round_start":
@@ -46,13 +54,16 @@ function normalizeMessage(raw: unknown): WSMessage {
                 roundId: typeof obj["roundId"] === "number" ? (obj["roundId"] as number) : undefined,
                 serverSeed: typeof obj["serverSeed"] === "string" ? (obj["serverSeed"] as string) : undefined,
                 serverSeedHash: typeof obj["serverSeedHash"] === "string" ? (obj["serverSeedHash"] as string) : undefined
-            } as WSMessage;
+            };
         case "state":
             return {
                 type: "state",
                 phase: obj["phase"] as GamePhase | undefined,
-                multiplier: typeof obj["multiplier"] === "number" ? (obj["multiplier"] as number) : undefined,
-                roundId: typeof obj["roundId"] === "number" ? (obj["roundId"] as number) : undefined
+                multiplier: typeof obj["multiplier"] === "number" ? (obj["multiplier"] as number) : typeof obj["currentMultiplier"] === "number" ? (obj["currentMultiplier"] as number) : undefined,
+                roundId: typeof obj["roundId"] === "number" ? (obj["roundId"] as number) : undefined,
+                betDeadline: typeof obj["betDeadline"] === "string" ? (obj["betDeadline"] as string) : undefined,
+                gameStartTime: typeof obj["gameStartTime"] === "string" ? (obj["gameStartTime"] as string) : undefined,
+                isGamePhase: typeof obj["isGamePhase"] === "boolean" ? (obj["isGamePhase"] as boolean) : undefined
             };
         default:
             if (typeof t === "string") return { type: "error", message: `unknown type ${t}` };
