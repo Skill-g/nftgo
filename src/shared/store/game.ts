@@ -3,63 +3,75 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type Bet = { amount: number; placed: boolean; betId?: number | null };
-type GamePhase = string;
+export type Phase = "waiting" | "running" | "crashed";
 
-type State = {
-    bets: Bet[];
-    gamePhase: GamePhase;
-    currentMultiplier: number;
+export type GameState = {
+    phase: Phase;
+    multiplier: number;
     roundId: number | null;
+    timeToStartMs: number | null;
+    startedAtMs: number | null;
+    crashMultiplier: number | null;
 };
 
 type Actions = {
-    setBetAmount: (index: number, value: number) => void;
-    setBetPlaced: (index: number, betId: number | null) => void;
-    resetBets: () => void;
-    setGamePhase: (phase: GamePhase) => void;
-    setCurrentMultiplier: (v: number) => void;
-    setRoundId: (id: number | null) => void;
-    setAllBets: (next: Bet[]) => void;
+    setFromServer: (p: Partial<GameState>) => void;
+    setPhase: (v: Phase) => void;
+    setMultiplier: (v: number) => void;
+    setRoundId: (v: number | null) => void;
+    setTimeToStartMs: (v: number | null) => void;
+    setStartedAtMs: (v: number | null) => void;
+    setCrashMultiplier: (v: number | null) => void;
+    tick: (dt: number) => void;
 };
 
-export type GameStore = State & Actions;
+export type GameStore = GameState & Actions;
 
-const defaultBets: Bet[] = [
-    { amount: 20, placed: false, betId: null },
-    { amount: 20, placed: false, betId: null },
-];
-
-const initialState: State = {
-    bets: defaultBets,
-    gamePhase: "waiting",
-    currentMultiplier: 1,
+const initial: GameState = {
+    phase: "waiting",
+    multiplier: 1,
     roundId: null,
+    timeToStartMs: null,
+    startedAtMs: null,
+    crashMultiplier: null,
 };
 
 export const useGameStore = create<GameStore>()(
     persist(
-        (set) => ({
-            ...initialState,
-            setBetAmount: (index: number, value: number) =>
-                set((s: GameStore) => ({ bets: s.bets.map((b, i) => (i === index ? { ...b, amount: value } : b)) })),
-            setBetPlaced: (index: number, betId: number | null) =>
-                set((s: GameStore) => ({ bets: s.bets.map((b, i) => (i === index ? { ...b, placed: !!betId, betId } : b)) })),
-            resetBets: () =>
-                set((s: GameStore) => ({ bets: s.bets.map((b) => ({ ...b, placed: false, betId: null })) })),
-            setGamePhase: (phase: GamePhase) => set({ gamePhase: phase }),
-            setCurrentMultiplier: (v: number) => set({ currentMultiplier: v }),
-            setRoundId: (id: number | null) => set({ roundId: id }),
-            setAllBets: (next: Bet[]) => set({ bets: next }),
+        (set, get) => ({
+            ...initial,
+            setFromServer: (p) =>
+                set((s) => ({
+                    phase: p.phase ?? s.phase,
+                    multiplier: typeof p.multiplier === "number" ? p.multiplier : s.multiplier,
+                    roundId: p.roundId === undefined ? s.roundId : p.roundId,
+                    timeToStartMs: p.timeToStartMs === undefined ? s.timeToStartMs : p.timeToStartMs,
+                    startedAtMs: p.startedAtMs === undefined ? s.startedAtMs : p.startedAtMs,
+                    crashMultiplier: p.crashMultiplier === undefined ? s.crashMultiplier : p.crashMultiplier,
+                })),
+            setPhase: (v) => set({ phase: v }),
+            setMultiplier: (v) => set({ multiplier: v }),
+            setRoundId: (v) => set({ roundId: v }),
+            setTimeToStartMs: (v) => set({ timeToStartMs: v }),
+            setStartedAtMs: (v) => set({ startedAtMs: v }),
+            setCrashMultiplier: (v) => set({ crashMultiplier: v }),
+            tick: (dt) => {
+                const s = get();
+                if (s.phase === "waiting" && s.timeToStartMs !== null && s.timeToStartMs > 0) {
+                    set({ timeToStartMs: Math.max(0, s.timeToStartMs - dt) });
+                }
+            },
         }),
         {
-            name: "game-state",
+            name: "game-runtime",
             storage: createJSONStorage(() => sessionStorage),
             partialize: (s) => ({
-                bets: s.bets,
-                gamePhase: s.gamePhase,
-                currentMultiplier: s.currentMultiplier,
+                phase: s.phase,
+                multiplier: s.multiplier,
                 roundId: s.roundId,
+                timeToStartMs: s.timeToStartMs,
+                startedAtMs: s.startedAtMs,
+                crashMultiplier: s.crashMultiplier,
             }),
         }
     )
