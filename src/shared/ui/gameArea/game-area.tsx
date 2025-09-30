@@ -1,14 +1,12 @@
 "use client";
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import styles from "./styles.module.css";
 import Image from "next/image";
 import { useGame } from "@/shared/hooks/useGame";
 import { motion, AnimatePresence } from "framer-motion";
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_CRUSH === "1";
 
 type GameAreaProps = {
     resetBets: () => void;
@@ -72,18 +70,6 @@ function usePhaseForUI(phase: string, roundId: number | null, delayMs = 220) {
     return uiPhase;
 }
 
-function useCountdownAbs(deadlineMs: number | null, serverOffsetMs: number) {
-    const [, force] = useState(0);
-    useEffect(() => {
-        const id = window.setInterval(() => force((v) => (v + 1) % 1_000_000), 250);
-        return () => window.clearInterval(id);
-    }, []);
-    if (!deadlineMs) return 0;
-    const wallNow = Date.now() + (serverOffsetMs || 0);
-    const remaining = Math.max(0, deadlineMs - wallNow);
-    return Math.ceil(remaining / 1000);
-}
-
 export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
     const { i18n } = useLingui();
     const { state } = useGame();
@@ -100,11 +86,9 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
     }, [state.phase, resetBets]);
 
     const uiPhase = usePhaseForUI(state.phase, state.roundId ?? null, 220);
-    const isActiveReal = useMemo(() => uiPhase !== "waiting" || state.multiplier > 1, [uiPhase, state.multiplier]);
-    const isActive = USE_MOCK ? false : isActiveReal;
+    const isActive = uiPhase !== "waiting" || state.multiplier > 1;
 
-    const remainingSecAbs = useCountdownAbs(state.deadlineMs, state.serverOffsetMs);
-    const remainingSec = USE_MOCK ? 12 : remainingSecAbs;
+    const remainingSec = state.timeToStart;
 
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
