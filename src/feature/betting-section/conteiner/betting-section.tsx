@@ -42,7 +42,6 @@ export function BettingSection({
                                    onCashOut,
                                }: BettingSectionProps) {
     const presetAmounts = [1, 5, 10, 20, 50];
-    const [activeTab, setActiveTab] = useState("balance");
 
     const isActiveRaw = useMemo(() => gamePhase !== "waiting", [gamePhase]);
     const isActive = useHysteresisBool(isActiveRaw, 220);
