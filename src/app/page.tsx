@@ -10,25 +10,24 @@ import { useUserContext } from "@/shared/context/UserContext";
 import { getBackendHost } from "@/shared/lib/host";
 import { useBalance } from "@/shared/hooks/useBalance";
 import { useGameStore } from "@/shared/store/game";
+import { useBetsStore } from "@/shared/store/bets";
+import type { Phase } from "@/shared/store/game";
 
 export default function Page() {
     const { user } = useUserContext();
     const initData = useMemo(() => user?.initData ?? "", [user]);
     const { setOptimistic, refresh } = useBalance(initData);
 
-    const game = useGameStore();
-    const {
-        bets,
-        setBetAmount,
-        setBetPlaced,
-        resetBets,
-        gamePhase,
-        setGamePhase,
-        currentMultiplier,
-        setCurrentMultiplier,
-        roundId,
-        setRoundId,
-    } = game;
+    const { phase, setPhase, multiplier, setMultiplier, roundId, setRoundId } = useGameStore();
+    const { bets, setBetAmount, setBetPlaced, resetBets } = useBetsStore();
+
+    const gamePhase = phase;
+    const setGamePhase = useCallback(
+        (p: string) => setPhase(p === "running" ? "running" : p === "crashed" ? "crashed" : "waiting" as Phase),
+        [setPhase]
+    );
+    const currentMultiplier = multiplier;
+    const setCurrentMultiplier = setMultiplier;
 
     const placeBet = useCallback(
         async (index: number) => {
