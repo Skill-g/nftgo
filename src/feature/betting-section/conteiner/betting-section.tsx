@@ -15,31 +15,20 @@ type BettingSectionProps = {
     onCashOut: (index: number) => void;
 };
 
-function useStablePhase(phase: string) {
-    const holdRef = useRef<number>(0);
-    const phaseRef = useRef<string>(phase);
+function useStickyPhase(phase: string) {
+    const ref = useRef<"waiting" | "running" | "crashed">("waiting");
     useEffect(() => {
-        const now = Date.now();
-        const prev = phaseRef.current;
+        const prev = ref.current;
         if (phase === "crashed") {
-            phaseRef.current = "crashed";
-            holdRef.current = now + 1200;
-            return;
+            ref.current = "crashed";
+        } else if (phase === "running") {
+            ref.current = "running";
+        } else if (phase === "waiting") {
+            if (prev === "running") return;
+            ref.current = "waiting";
         }
-        if (phase === "running") {
-            phaseRef.current = "running";
-            holdRef.current = now + 300;
-            return;
-        }
-        if (phase === "waiting") {
-            if (now < holdRef.current && (prev === "running" || prev === "crashed")) return;
-            phaseRef.current = "waiting";
-            holdRef.current = 0;
-            return;
-        }
-        phaseRef.current = phase;
     }, [phase]);
-    return phaseRef.current;
+    return ref.current;
 }
 
 export function BettingSection({
@@ -50,9 +39,9 @@ export function BettingSection({
                                    currentMultiplier,
                                    onCashOut,
                                }: BettingSectionProps) {
-    const stablePhase = useStablePhase(gamePhase);
-    const isWaiting = useMemo(() => stablePhase === "waiting", [stablePhase]);
-    const isRunning = useMemo(() => stablePhase === "running", [stablePhase]);
+    const phase = useStickyPhase(gamePhase);
+    const isWaiting = useMemo(() => phase === "waiting", [phase]);
+    const isRunning = useMemo(() => phase === "running", [phase]);
 
     const presetAmounts = [1, 5, 10, 20, 50];
     const onSetBetAmount = useCallback((i: number, v: number) => setBetAmount(i, v), [setBetAmount]);

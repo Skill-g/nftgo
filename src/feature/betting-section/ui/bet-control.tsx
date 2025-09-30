@@ -1,5 +1,4 @@
 "use client";
-
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
 import { Button } from "@/shared/ui/button";
@@ -157,7 +156,7 @@ export const BetControl = ({
                     ))}
                 </div>
             </div>
-            <div className="w-full py-2 px-1">
+            <div className="w-full py-2 px-1 h-full">
                 <Button onClick={onButtonClick} className={buttonClass} style={buttonStyle} disabled={buttonDisabled} type="button">
                     {buttonContent}
                 </Button>
