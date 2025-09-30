@@ -1,12 +1,12 @@
-'use client';
-import { useLingui } from '@lingui/react';
-import { Trans, msg } from '@lingui/macro';
+"use client";
+import { useLingui } from "@lingui/react";
+import { Trans, msg } from "@lingui/macro";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import type { CSSProperties } from "react";
 import { Deposit } from "@/feature/deposit";
-import type { CSSProperties } from 'react';
 
 type BetControlProps = {
     presetAmounts: number[];
@@ -22,12 +22,16 @@ type BetControlProps = {
 
 function formatTon(n: number, minFrac = 1, maxFrac = 6): string {
     const fixed = n.toFixed(maxFrac);
-    const trimmed = fixed.replace(/(\.\d*?[1-9])0+$/,'$1').replace(/\.0+$/,'');
-    if (trimmed.includes('.')) return trimmed;
+    const trimmed = fixed.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+    if (trimmed.includes(".")) return trimmed;
     return Number(n).toFixed(minFrac);
 }
 
-export function BetControl({
+function classNames(...xs: Array<string | false>) {
+    return xs.filter(Boolean).join(" ");
+}
+
+export const BetControl = ({
                                presetAmounts,
                                betAmount1,
                                setBetAmount1,
@@ -37,48 +41,51 @@ export function BetControl({
                                multiplier,
                                onPlaceBet,
                                onCashOut,
-                           }: BetControlProps) {
+                           }: BetControlProps) => {
     const { i18n } = useLingui();
     const [showDepositModal, setShowDepositModal] = useState(false);
 
-    const winSum = betAmount1 * multiplier;
+    const winSum = useMemo(() => betAmount1 * multiplier, [betAmount1, multiplier]);
 
-    const canCashOut = placed && !waiting;
-    const canPlace = !placed && !isActive;
-    const isClosed = !placed && isActive;
-    const isWaitingPlaced = placed && waiting;
+    const canCashOut = useMemo(() => placed && !waiting, [placed, waiting]);
+    const canPlace = useMemo(() => !placed && !isActive, [placed, isActive]);
+    const isClosed = useMemo(() => !placed && isActive, [placed, isActive]);
+    const isWaitingPlaced = useMemo(() => placed && waiting, [placed, waiting]);
 
-    const buttonDisabled = isClosed || isWaitingPlaced ? true : false;
-    const buttonStyle: CSSProperties = canCashOut
-        ? { backgroundColor: "#FFCC00" }
-        : {};
+    const buttonDisabled = isClosed || isWaitingPlaced;
+    const buttonStyle: CSSProperties = canCashOut ? { backgroundColor: "#FFCC00" } : {};
 
-    const buttonClass = canCashOut
-        ? "text-black rounded-[20px] font-bold w-[100%] h-[100%]"
-        : isClosed
-            ? "bg-[#1B1636] text-[#969696] rounded-[20px] font-bold w-[100%] h-[100%]"
-            : isWaitingPlaced
-                ? "bg-[#1B1636] text-white rounded-[20px] font-bold w-[100%] h-[100%]"
-                : "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white rounded-[20px] font-bold w-[100%] h-[100%]";
-
-    const onButtonClick = canCashOut ? onCashOut : canPlace ? onPlaceBet : () => {};
-
-    const buttonContent = canCashOut ? (
-        <div className="flex flex-col items-center leading-tight">
-      <span className="text-lg font-bold mb-1 text-black">
-        {formatTon(winSum)} <Trans>TON</Trans>
-      </span>
-            <span className="text-black"><Trans>ЗАБРАТЬ</Trans></span>
-        </div>
-    ) : isClosed ? (
-        i18n._(msg`СТАВКИ ЗАКРЫТЫ`)
-    ) : isWaitingPlaced ? (
-        i18n._(msg`ОЖИДАНИЕ`)
-    ) : (
-        i18n._(msg`СТАВИТЬ`)
+    const buttonClass = classNames(
+        canCashOut && "text-black rounded-[20px] font-bold w-[100%] h-[100%]",
+        isClosed && "bg-[#1B1636] text-[#969696] rounded-[20px] font-bold w-[100%] h-[100%]",
+        isWaitingPlaced && "bg-[#1B1636] text-white rounded-[20px] font-bold w-[100%] h-[100%]",
+        !canCashOut && !isClosed && !isWaitingPlaced && "bg-gradient-to-r from-[#8845f5] to-[#B384FF] hover:bg-[#8845f5]/80 text-white rounded-[20px] font-bold w-[100%] h-[100%]"
     );
 
-    const controlsDisabled = placed || (!placed && isActive);
+    const onButtonClick = useCallback(() => {
+        if (canCashOut) onCashOut();
+        else if (canPlace) onPlaceBet();
+    }, [canCashOut, canPlace, onCashOut, onPlaceBet]);
+
+    const buttonContent = useMemo(() => {
+        if (canCashOut) {
+            return (
+                <div className="flex flex-col items-center leading-tight">
+          <span className="text-lg font-bold mb-1 text-black">
+            {formatTon(winSum)} <Trans>TON</Trans>
+          </span>
+                    <span className="text-black">
+            <Trans>ЗАБРАТЬ</Trans>
+          </span>
+                </div>
+            );
+        }
+        if (isClosed) return i18n._(msg`СТАВКИ ЗАКРЫТЫ`);
+        if (isWaitingPlaced) return i18n._(msg`ОЖИДАНИЕ`);
+        return i18n._(msg`СТАВИТЬ`);
+    }, [canCashOut, isClosed, isWaitingPlaced, winSum, i18n]);
+
+    const controlsDisabled = useMemo(() => placed || (!placed && isActive), [placed, isActive]);
 
     return (
         <div className="flex bg-[#262352] rounded-[20px] p-2">
@@ -133,17 +140,11 @@ export function BetControl({
                 </div>
             </div>
             <div className="w-[100%] py-2 px-1">
-                <Button
-                    onClick={onButtonClick}
-                    className={buttonClass}
-                    style={buttonStyle}
-                    disabled={buttonDisabled}
-                    type="button"
-                >
+                <Button onClick={onButtonClick} className={buttonClass} style={buttonStyle} disabled={buttonDisabled} type="button">
                     {buttonContent}
                 </Button>
             </div>
             <Deposit showDepositModal={showDepositModal} setShowDepositModal={setShowDepositModal} />
         </div>
     );
-}
+};

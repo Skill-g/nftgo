@@ -1,5 +1,4 @@
 "use client";
-
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -17,40 +16,6 @@ type GameAreaProps = {
     setCurrentMultiplier: (multiplier: number) => void;
     setRoundId: (id: number | null) => void;
 };
-
-function useCountdown(sourceTimeToStart?: number | null) {
-    const [now, setNow] = useState(() => Date.now());
-    const endRef = useRef<number | null>(null);
-    useEffect(() => {
-        if (sourceTimeToStart == null) {
-            endRef.current = null;
-            return;
-        }
-        const ms = sourceTimeToStart > 1000 ? sourceTimeToStart : sourceTimeToStart * 1000;
-        endRef.current = Date.now() + ms;
-        setNow(Date.now());
-    }, [sourceTimeToStart]);
-    useEffect(() => {
-        const id = setInterval(() => setNow(Date.now()), 100);
-        return () => clearInterval(id);
-    }, []);
-    const remainingMs = Math.max(0, (endRef.current ?? Date.now()) - now);
-    const remainingSec = Math.ceil(remainingMs / 1000);
-    return remainingSec;
-}
-
-function useMockSeconds(enabled: boolean, initial = 12) {
-    const [remaining, setRemaining] = useState(initial);
-    useEffect(() => {
-        if (!enabled) return;
-        setRemaining(initial);
-        const id = setInterval(() => {
-            setRemaining((v) => (v <= 1 ? initial : v - 1));
-        }, 1000);
-        return () => clearInterval(id);
-    }, [enabled, initial]);
-    return remaining;
-}
 
 function Digit({ value, idx, tickKey }: { value: string; idx: number; tickKey: number }) {
     return (
@@ -83,13 +48,13 @@ function AnimatedSeconds({ seconds }: { seconds: number }) {
     );
 }
 
-function usePhaseForUI(phase: string, roundId: number | null, delayMs = 350) {
+function usePhaseForUI(phase: string, roundId: number | null, delayMs = 250) {
     const [uiPhase, setUiPhase] = useState(phase);
     const toRef = useRef<number | null>(null);
     useEffect(() => {
         if (phase === "waiting") {
             if (toRef.current) window.clearTimeout(toRef.current);
-            toRef.current = window.setTimeout(() => setUiPhase("waiting"), delayMs);
+            toRef.current = window.setTimeout(() => setUiPhase("waiting"), delayMs) as unknown as number;
         } else {
             if (toRef.current) {
                 window.clearTimeout(toRef.current);
@@ -128,13 +93,15 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
         }
     }, [state.phase, resetBets]);
 
-    const uiPhase = usePhaseForUI(state.phase, state.roundId ?? null, 350);
+    const uiPhase = usePhaseForUI(state.phase, state.roundId ?? null, 220);
     const isActiveReal = useMemo(() => uiPhase !== "waiting" || state.multiplier > 1, [uiPhase, state.multiplier]);
     const isActive = USE_MOCK ? false : isActiveReal;
 
-    const remainingReal = useCountdown(state.timeToStart ?? 0);
-    const remainingMock = useMockSeconds(USE_MOCK, 12);
-    const remainingSec = USE_MOCK ? remainingMock : remainingReal;
+    const remainingSecFromStore = useMemo(
+        () => Math.max(0, Math.ceil(state.timeToStart)),
+        [state.timeToStart]
+    );
+    const remainingSec = USE_MOCK ? 12 : remainingSecFromStore;
 
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
