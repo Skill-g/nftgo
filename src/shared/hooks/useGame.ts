@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserContext } from "@/shared/context/UserContext";
 import { useGameApi } from "@/shared/lib/game-api";
 import { makeGameSocket, WSMessage } from "@/shared/lib/game-socket";
-import { useGameStore } from "@/shared/store/game";
-import type { GameState as StoreState, Phase as StorePhase } from "@/shared/store/game";
+import { getBackendHost } from "@/shared/lib/host";
 
 export type GamePhase = "waiting" | "running" | "crashed";
 
@@ -17,6 +16,8 @@ export type ClientGameState = {
     lastError: string | null;
     timeToStart: number;
     waitTotal: number;
+    deadlineMs: number | null;
+    serverOffsetMs: number;
 };
 
 type WaitMeta = {
@@ -37,32 +38,24 @@ export function useGame() {
     const { user } = useUserContext();
     const initData = user?.initData || "";
     const { fetchCurrentRound } = useGameApi();
+    const host = getBackendHost();
 
-    const snap = useGameStore.getState();
     const [state, setState] = useState<ClientGameState>({
-        phase: (snap.phase as GamePhase) ?? "waiting",
-        multiplier: typeof snap.multiplier === "number" ? snap.multiplier : 1,
-        roundId: snap.roundId ?? null,
+        phase: "waiting",
+        multiplier: 1,
+        roundId: null,
         connected: false,
         lastError: null,
-        timeToStart: snap.timeToStartMs != null ? Math.max(0, Math.ceil(snap.timeToStartMs / 1000)) : 0,
+        timeToStart: 0,
         waitTotal: 0,
+        deadlineMs: null,
+        serverOffsetMs: 0,
     });
 
     const retryRef = useRef<{ tries: number; closing: boolean }>({ tries: 0, closing: false });
     const socketRef = useRef<ReturnType<typeof makeGameSocket> | null>(null);
     const timerRef = useRef<number | null>(null);
     const serverOffsetRef = useRef<number>(0);
-
-    const syncStore = useCallback((next: Partial<ClientGameState>) => {
-        const cur = useGameStore.getState();
-        const patch: Partial<StoreState> = {};
-        if (typeof next.phase === "string") patch.phase = next.phase as StorePhase;
-        if (typeof next.multiplier === "number") patch.multiplier = next.multiplier;
-        if (Object.prototype.hasOwnProperty.call(next, "roundId")) patch.roundId = (next.roundId ?? null) as number | null;
-        if (typeof next.timeToStart === "number") patch.timeToStartMs = Math.max(0, Math.round(next.timeToStart * 1000));
-        if (Object.keys(patch).length > 0) cur.setFromServer(patch);
-    }, []);
 
     const clearTimer = useCallback(() => {
         if (timerRef.current !== null) {
@@ -99,43 +92,49 @@ export function useGame() {
         (roundId: number, deadlineISO?: string, preferTotal?: number) => {
             clearTimer();
             if (!deadlineISO) {
-                setState((s) => {
-                    const next: ClientGameState = { ...s, timeToStart: 0, waitTotal: preferTotal ?? s.waitTotal };
-                    syncStore(next);
-                    return next;
-                });
+                setState((s) => ({
+                    ...s,
+                    timeToStart: 0,
+                    waitTotal: preferTotal ?? s.waitTotal,
+                    deadlineMs: null,
+                }));
                 return;
             }
             const dl = Date.parse(deadlineISO);
             if (!Number.isFinite(dl)) {
-                setState((s) => {
-                    const next: ClientGameState = { ...s, timeToStart: 0, waitTotal: preferTotal ?? s.waitTotal };
-                    syncStore(next);
-                    return next;
-                });
+                setState((s) => ({
+                    ...s,
+                    timeToStart: 0,
+                    waitTotal: preferTotal ?? s.waitTotal,
+                    deadlineMs: null,
+                }));
                 return;
             }
-            const now = Date.now() + serverOffsetRef.current;
-            const firstRemaining = Math.max(0, Math.ceil((dl - now) / 1000));
+            const nowFixed = Date.now() + serverOffsetRef.current;
+            const firstRemaining = Math.max(0, Math.ceil((dl - nowFixed) / 1000));
             const total = Math.max(preferTotal ?? firstRemaining, 0);
             saveWaitMeta({ roundId, deadlineISO, waitTotal: total });
+
             const tick = () => {
                 const tNow = Date.now() + serverOffsetRef.current;
                 const remaining = Math.max(0, Math.ceil((dl - tNow) / 1000));
-                setState((s) => {
-                    const next: ClientGameState = { ...s, timeToStart: remaining, waitTotal: total };
-                    syncStore(next);
-                    return next;
-                });
+                setState((s) => ({
+                    ...s,
+                    timeToStart: remaining,
+                    waitTotal: total,
+                    deadlineMs: dl,
+                    serverOffsetMs: serverOffsetRef.current,
+                }));
                 if (remaining <= 0) clearTimer();
             };
+
             tick();
             timerRef.current = window.setInterval(tick, 250) as unknown as number;
         },
-        [clearTimer, saveWaitMeta, syncStore]
+        [clearTimer, saveWaitMeta]
     );
 
-    const scheduleReconnect = useCallback((): (() => void) => {
+    const scheduleReconnect = useCallback(() => {
         retryRef.current.tries += 1;
         const t = Math.min(20000, 1000 * Math.pow(2, retryRef.current.tries));
         const id = window.setTimeout(() => {
@@ -144,32 +143,42 @@ export function useGame() {
         return () => window.clearTimeout(id);
     }, []);
 
+    const pullCurrentWithServerDate = useCallback(async (): Promise<CurrentRound> => {
+        if (!host) return fetchCurrentRound() as Promise<CurrentRound>;
+        const res = await fetch(`https://${host}/api/game/current?_=${Date.now()}`, { cache: "no-store" });
+        const dateHeader = res.headers.get("date");
+        if (dateHeader) {
+            const srv = Date.parse(dateHeader);
+            if (Number.isFinite(srv)) {
+                serverOffsetRef.current = srv - Date.now();
+            }
+        }
+        const json = (await res.json()) as CurrentRound;
+        return json;
+    }, [fetchCurrentRound, host]);
+
     const connect = useCallback(async () => {
         if (!initData) return;
         try {
-            const current = (await fetchCurrentRound()) as CurrentRound;
+            const current = await pullCurrentWithServerDate();
             if (retryRef.current.closing) return;
-            setState((s) => {
-                const next: ClientGameState = {
-                    ...s,
-                    roundId: current.roundId,
-                    multiplier: current.currentMultiplier ?? 1,
-                };
-                syncStore(next);
-                return next;
-            });
+
+            setState((s) => ({
+                ...s,
+                roundId: current.roundId,
+                multiplier: current.currentMultiplier ?? 1,
+                serverOffsetMs: serverOffsetRef.current,
+            }));
+
             const meta = loadWaitMeta();
             const preferTotal = meta && meta.roundId === current.roundId ? meta.waitTotal : undefined;
             startTimer(current.roundId, current.betDeadline, preferTotal);
-            socketRef.current?.close();
 
+            socketRef.current?.close();
             const sock = makeGameSocket(current.roundId, initData, {
                 onOpen: () => {
                     retryRef.current.tries = 0;
-                    setState((s) => {
-                        const next: ClientGameState = { ...s, connected: true, lastError: null };
-                        return next;
-                    });
+                    setState((s) => ({ ...s, connected: true, lastError: null }));
                 },
                 onClose: () => {
                     setState((s) => ({ ...s, connected: false }));
@@ -181,14 +190,10 @@ export function useGame() {
                 onMessage: (msg: WSMessage) => {
                     switch (msg.type) {
                         case "round_start": {
-                            setState((s) => {
-                                const next: ClientGameState = { ...s, phase: "waiting", roundId: msg.roundId ?? s.roundId, multiplier: 1 };
-                                syncStore(next);
-                                return next;
-                            });
+                            setState((s) => ({ ...s, phase: "waiting", roundId: msg.roundId ?? s.roundId, multiplier: 1 }));
                             (async () => {
                                 try {
-                                    const r = (await fetchCurrentRound()) as CurrentRound;
+                                    const r = await pullCurrentWithServerDate();
                                     const m = loadWaitMeta();
                                     const prefer = m && m.roundId === r.roundId ? m.waitTotal : undefined;
                                     startTimer(r.roundId, r.betDeadline, prefer);
@@ -199,28 +204,16 @@ export function useGame() {
                         case "game_start": {
                             clearWaitMeta();
                             clearTimer();
-                            setState((s) => {
-                                const next: ClientGameState = { ...s, phase: "running", roundId: msg.roundId ?? s.roundId, timeToStart: 0 };
-                                syncStore(next);
-                                return next;
-                            });
+                            setState((s) => ({ ...s, phase: "running", roundId: msg.roundId ?? s.roundId, timeToStart: 0, deadlineMs: null }));
                             break;
                         }
                         case "multiplier_update": {
-                            setState((s) => {
-                                const next: ClientGameState = { ...s, multiplier: msg.multiplier, phase: "running" };
-                                syncStore(next);
-                                return next;
-                            });
+                            setState((s) => ({ ...s, multiplier: msg.multiplier, phase: "running" }));
                             break;
                         }
                         case "game_crash": {
                             clearWaitMeta();
-                            setState((s) => {
-                                const next: ClientGameState = { ...s, phase: "crashed", multiplier: msg.crashMultiplier };
-                                syncStore(next);
-                                return next;
-                            });
+                            setState((s) => ({ ...s, phase: "crashed", multiplier: msg.crashMultiplier }));
                             break;
                         }
                         case "state": {
@@ -228,14 +221,7 @@ export function useGame() {
                                 const nextMultiplier = typeof msg.multiplier === "number" ? msg.multiplier : prev.multiplier;
                                 const inferredPhase: GamePhase =
                                     (msg.phase as GamePhase | undefined) ?? (nextMultiplier > 1 ? "running" : prev.phase);
-                                const next: ClientGameState = {
-                                    ...prev,
-                                    phase: inferredPhase,
-                                    multiplier: nextMultiplier,
-                                    roundId: msg.roundId ?? prev.roundId,
-                                };
-                                syncStore(next);
-                                return next;
+                                return { ...prev, phase: inferredPhase, multiplier: nextMultiplier, roundId: msg.roundId ?? prev.roundId };
                             });
                             break;
                         }
@@ -244,6 +230,7 @@ export function useGame() {
                                 const measured = msg.ts - Date.now();
                                 serverOffsetRef.current =
                                     Math.abs(serverOffsetRef.current) < 1 ? measured : (serverOffsetRef.current * 4 + measured) / 5;
+                                setState((s) => ({ ...s, serverOffsetMs: serverOffsetRef.current }));
                             }
                             break;
                         }
@@ -265,7 +252,7 @@ export function useGame() {
             setState((s) => ({ ...s, lastError: err }));
             scheduleReconnect();
         }
-    }, [initData, fetchCurrentRound, startTimer, loadWaitMeta, clearTimer, clearWaitMeta, scheduleReconnect, syncStore]);
+    }, [initData, loadWaitMeta, scheduleReconnect, startTimer, clearTimer, clearWaitMeta, pullCurrentWithServerDate]);
 
     const close = useCallback(() => {
         retryRef.current.closing = true;
@@ -280,23 +267,20 @@ export function useGame() {
             const dl = Date.parse(meta.deadlineISO);
             if (Number.isFinite(dl) && dl > now) {
                 const remaining = Math.max(0, Math.ceil((dl - now) / 1000));
-                setState((s) => {
-                    const next: ClientGameState = {
-                        ...s,
-                        phase: "waiting",
-                        roundId: meta.roundId,
-                        timeToStart: remaining,
-                        waitTotal: meta.waitTotal,
-                    };
-                    syncStore(next);
-                    return next;
-                });
+                setState((s) => ({
+                    ...s,
+                    phase: "waiting",
+                    roundId: meta.roundId,
+                    timeToStart: remaining,
+                    waitTotal: meta.waitTotal,
+                    deadlineMs: dl,
+                }));
                 startTimer(meta.roundId, meta.deadlineISO, meta.waitTotal);
             } else {
                 clearWaitMeta();
             }
         }
-    }, [loadWaitMeta, startTimer, clearWaitMeta, syncStore]);
+    }, [loadWaitMeta, startTimer, clearWaitMeta]);
 
     useEffect(() => {
         if (!initData) return;

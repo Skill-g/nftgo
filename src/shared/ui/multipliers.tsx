@@ -2,7 +2,7 @@
 
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
-import { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
 import { v4 as uuidv4 } from "uuid";
 import { getBackendHost } from "@/shared/lib/host";
@@ -81,9 +81,8 @@ export function Multipliers({
     const { i18n } = useLingui();
     const { bets: betsReal } = useBetsNowReal(roundId, initData);
 
-    const processedHistory = useRef<Set<number>>(new Set());
-    const processedBets = useRef<Set<number>>(new Set());
-    const lastFetchTime = useRef<number>(0);
+    const historySeen = useRef<Map<number, number>>(new Map());
+    const betsSeen = useRef<Map<number, number>>(new Map());
     const fetching = useRef(false);
 
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -114,14 +113,12 @@ export function Multipliers({
             const res = await fetch(url, {
                 cache: "no-store",
                 headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-                signal: controllerRef.current.signal
+                signal: controllerRef.current.signal,
             });
             if (!res.ok) return;
             const data: HistoryRow[] = await res.json();
             if (!Array.isArray(data)) return;
-
-            setHistory([...data]);
-            lastFetchTime.current = Date.now();
+            setHistory(data);
         } catch {}
         finally {
             fetching.current = false;
@@ -146,7 +143,6 @@ export function Multipliers({
     useEffect(() => {
         controllerRef.current = new AbortController();
         load();
-
         if (pollTimer.current) window.clearInterval(pollTimer.current);
         pollTimer.current = window.setInterval(load, Math.max(500, pollMs)) as unknown as number;
 
@@ -173,19 +169,23 @@ export function Multipliers({
     useEffect(() => {
         if (gcTimer.current) window.clearInterval(gcTimer.current);
         gcTimer.current = window.setInterval(() => {
-            const totalProcessed = processedHistory.current.size + processedBets.current.size;
-            if (totalProcessed > queueLimit * 3) {
-                const historyIds = Array.from(processedHistory.current).sort((a, b) => a - b);
-                const betIds = Array.from(processedBets.current).sort((a, b) => a - b);
-
-                if (historyIds.length > queueLimit) {
-                    const toKeep = historyIds.slice(-queueLimit);
-                    processedHistory.current = new Set(toKeep);
+            if (historySeen.current.size > queueLimit * 3) {
+                const ids = Array.from(historySeen.current.keys()).slice(-queueLimit);
+                const next = new Map<number, number>();
+                for (const id of ids) {
+                    const val = historySeen.current.get(id);
+                    if (typeof val === "number") next.set(id, val);
                 }
-                if (betIds.length > queueLimit) {
-                    const toKeep = betIds.slice(-queueLimit);
-                    processedBets.current = new Set(toKeep);
+                historySeen.current = next;
+            }
+            if (betsSeen.current.size > queueLimit * 3) {
+                const ids = Array.from(betsSeen.current.keys()).slice(-queueLimit);
+                const next = new Map<number, number>();
+                for (const id of ids) {
+                    const val = betsSeen.current.get(id);
+                    if (typeof val === "number") next.set(id, val);
                 }
+                betsSeen.current = next;
             }
         }, 10000) as unknown as number;
         return () => {
@@ -195,96 +195,135 @@ export function Multipliers({
     }, [queueLimit]);
 
     useEffect(() => {
-        const newItems: QueueItem[] = [];
         const now = Date.now();
+        const newItems: QueueItem[] = [];
 
         const betsArray = Array.isArray(betsReal) ? betsReal : [betsReal];
         for (const item of betsArray) {
             const bid = readBetId(item);
             if (bid === null) continue;
-            if (processedBets.current.has(bid)) continue;
-            processedBets.current.add(bid);
             const m = readMultiplier(item);
-            newItems.push({
-                id: `bet-${bid}-${uuidv4()}`,
-                label: formatX(m),
-                value: m,
-                createdAt: now
-            });
+            const prev = betsSeen.current.get(bid);
+            if (prev === undefined || prev !== m) {
+                betsSeen.current.set(bid, m);
+                newItems.push({
+                    id: `bet-${bid}-${uuidv4()}`,
+                    label: formatX(m),
+                    value: m,
+                    createdAt: now,
+                });
+            }
         }
 
-        const sortedHistory = [...history].sort((a, b) =>
-            new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
-        );
-
+        const sortedHistory = [...history].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime());
         for (const row of sortedHistory) {
-            if (processedHistory.current.has(row.roundId)) continue;
-            processedHistory.current.add(row.roundId);
-            newItems.push({
-                id: `history-${row.roundId}-${uuidv4()}`,
-                label: formatX(row.crashMultiplier),
-                value: row.crashMultiplier,
-                createdAt: now
-            });
+            const prev = historySeen.current.get(row.roundId);
+            if (prev === undefined || prev !== row.crashMultiplier) {
+                historySeen.current.set(row.roundId, row.crashMultiplier);
+                newItems.push({
+                    id: `history-${row.roundId}-${uuidv4()}`,
+                    label: formatX(row.crashMultiplier),
+                    value: row.crashMultiplier,
+                    createdAt: now,
+                });
+            }
         }
 
-        if (newItems.length > 0) {
+        if (newItems.length) {
             setQueue((prev) => {
-                const seenIds = new Set([...prev, ...active].map((item) => item.id));
-                const filtered = newItems.filter((item) => !seenIds.has(item.id));
+                const seenIds = new Set(prev.map((x) => x.id));
+                const filtered = newItems.filter((x) => !seenIds.has(x.id));
                 const combined = [...filtered, ...prev];
                 return combined.length > queueLimit ? combined.slice(0, queueLimit) : combined;
             });
         }
-    }, [betsReal, history, queueLimit, active]);
+    }, [betsReal, history, queueLimit]);
 
     useLayoutEffect(() => {
-        if (!containerRef.current || !queue.length || active.length >= maxConcurrent) return;
-        const toAdd = maxConcurrent - active.length;
-        if (toAdd > 0) {
-            setActive((prev) => [...prev, ...queue.slice(0, toAdd)]);
-            setQueue((prev) => prev.slice(toAdd));
-        }
+        if (!containerRef.current || !queue.length) return;
+        if (active.length >= maxConcurrent) return;
+        const toAdd = Math.max(0, maxConcurrent - active.length);
+        if (toAdd <= 0) return;
+        setActive((prev) => [...prev, ...queue.slice(0, toAdd)]);
+        setQueue((prev) => prev.slice(toAdd));
     }, [queue, active.length, maxConcurrent]);
 
     useLayoutEffect(() => {
-        if (!containerRef.current || !active.length || !animeRef.current || !animeReady) return;
+        if (!containerRef.current || !active.length) return;
         const current = active[active.length - 1];
         const el = nodeMapRef.current.get(current.id);
         if (!el) return;
+
         const box = containerRef.current.getBoundingClientRect();
         const pill = el.getBoundingClientRect();
         const margin = 12;
         const fromX = -pill.width - margin;
         const toX = box.width + margin;
         const fromY = (containerRef.current.clientHeight - pill.height) / 2;
-        el.style.opacity = "0";
-        el.style.transform = `translate(${fromX}px, ${fromY}px)`;
-        const baseDuration = 6500;
-        const jitter = Math.floor(Math.random() * 1000) - 500;
-        const delay = 120 + Math.random() * 240;
-        animeRef.current({
-            targets: el,
-            translateX: [fromX, toX],
-            opacity: [
-                { value: 0, duration: 0 },
-                { value: 1, duration: 220, easing: "easeOutQuad" },
-                { value: 1, duration: baseDuration - 440, easing: "linear" },
-                { value: 0, duration: 220, easing: "easeOutQuad" },
-            ],
-            duration: Math.max(4000, baseDuration + jitter),
-            easing: "linear",
-            delay,
-            complete: () => {
-                setActive((prev) => prev.filter((p) => p.id !== current.id));
-                nodeMapRef.current.delete(current.id);
-            },
-        });
-    }, [active, queueLimit, animeReady]);
+
+        const play = () => {
+            el.style.opacity = "0";
+            el.style.transform = `translate(${fromX}px, ${fromY}px)`;
+            const baseDuration = 6500;
+            const jitter = Math.floor(Math.random() * 1000) - 500;
+            const delay = 120 + Math.random() * 240;
+            if (animeRef.current && animeReady) {
+                animeRef.current({
+                    targets: el,
+                    translateX: [fromX, toX],
+                    opacity: [
+                        { value: 0, duration: 0 },
+                        { value: 1, duration: 220, easing: "easeOutQuad" },
+                        { value: 1, duration: baseDuration - 440, easing: "linear" },
+                        { value: 0, duration: 220, easing: "easeOutQuad" },
+                    ],
+                    duration: Math.max(4000, baseDuration + jitter),
+                    easing: "linear",
+                    delay,
+                    complete: () => {
+                        setActive((prev) => prev.filter((p) => p.id !== current.id));
+                        nodeMapRef.current.delete(current.id);
+                    },
+                });
+            } else {
+                el.style.opacity = "1";
+                let raf: number | null = null;
+                const start = performance.now() + delay;
+                const dur = Math.max(4000, baseDuration + jitter);
+                const step = (t: number) => {
+                    const tt = Math.max(0, t - start);
+                    const k = Math.min(1, tt / dur);
+                    const x = fromX + (toX - fromX) * k;
+                    el.style.transform = `translate(${x}px, ${fromY}px)`;
+                    if (k < 1) {
+                        raf = requestAnimationFrame(step);
+                    } else {
+                        setActive((prev) => prev.filter((p) => p.id !== current.id));
+                        nodeMapRef.current.delete(current.id);
+                    }
+                };
+                raf = requestAnimationFrame(step);
+                return () => {
+                    if (raf) cancelAnimationFrame(raf);
+                };
+            }
+        };
+
+        const clean = play();
+        return () => {
+            if (typeof clean === "function") clean();
+        };
+    }, [active, animeReady]);
+
+    const pills = useMemo(() => active, [active]);
 
     return (
-        <div ref={containerRef} className="relative h-[30px] w-full overflow-hidden gap-[6px] flex" aria-label={i18n._(msg`multipliers-stream`)}>
-            {active.map((item) => (
+        <div
+            ref={containerRef}
+            className="relative h-[30px] w-full overflow-hidden gap-[6px] flex"
+            aria-label={i18n._(msg`multipliers-stream`)}
+        >
+            {pills.map((item) => (
                 <div
                     key={item.id}
                     ref={setNodeRef(item.id)}

@@ -48,7 +48,7 @@ function AnimatedSeconds({ seconds }: { seconds: number }) {
     );
 }
 
-function usePhaseForUI(phase: string, roundId: number | null, delayMs = 250) {
+function usePhaseForUI(phase: string, roundId: number | null, delayMs = 220) {
     const [uiPhase, setUiPhase] = useState(phase);
     const toRef = useRef<number | null>(null);
     useEffect(() => {
@@ -72,19 +72,25 @@ function usePhaseForUI(phase: string, roundId: number | null, delayMs = 250) {
     return uiPhase;
 }
 
+function useCountdownAbs(deadlineMs: number | null, serverOffsetMs: number) {
+    const [, force] = useState(0);
+    useEffect(() => {
+        const id = window.setInterval(() => force((v) => (v + 1) % 1_000_000), 250);
+        return () => window.clearInterval(id);
+    }, []);
+    if (!deadlineMs) return 0;
+    const wallNow = Date.now() + (serverOffsetMs || 0);
+    const remaining = Math.max(0, deadlineMs - wallNow);
+    return Math.ceil(remaining / 1000);
+}
+
 export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRoundId }: GameAreaProps) {
     const { i18n } = useLingui();
     const { state } = useGame();
 
-    useEffect(() => {
-        setGamePhase(state.phase);
-    }, [state.phase, setGamePhase]);
-    useEffect(() => {
-        setCurrentMultiplier(state.multiplier);
-    }, [state.multiplier, setCurrentMultiplier]);
-    useEffect(() => {
-        setRoundId(state.roundId ?? null);
-    }, [state.roundId, setRoundId]);
+    useEffect(() => { setGamePhase(state.phase); }, [state.phase, setGamePhase]);
+    useEffect(() => { setCurrentMultiplier(state.multiplier); }, [state.multiplier, setCurrentMultiplier]);
+    useEffect(() => { setRoundId(state.roundId ?? null); }, [state.roundId, setRoundId]);
 
     useEffect(() => {
         if (state.phase === "crashed") {
@@ -97,11 +103,8 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
     const isActiveReal = useMemo(() => uiPhase !== "waiting" || state.multiplier > 1, [uiPhase, state.multiplier]);
     const isActive = USE_MOCK ? false : isActiveReal;
 
-    const remainingSecFromStore = useMemo(
-        () => Math.max(0, Math.ceil(state.timeToStart)),
-        [state.timeToStart]
-    );
-    const remainingSec = USE_MOCK ? 12 : remainingSecFromStore;
+    const remainingSecAbs = useCountdownAbs(state.deadlineMs, state.serverOffsetMs);
+    const remainingSec = USE_MOCK ? 12 : remainingSecAbs;
 
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [trackWidth, setTrackWidth] = useState(0);
@@ -123,16 +126,62 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
         return () => ro && ro.disconnect();
     }, []);
 
-    const runnerPx = useMemo(() => {
-        if (!isActive || trackWidth <= 0) return -80;
-        const m = Math.max(1, state.multiplier);
-        const norm = Math.min(Math.log(m) / Math.log(20), 1);
-        const span = trackWidth + 160;
-        return -80 + norm * span;
-    }, [isActive, trackWidth, state.multiplier]);
+    const [runnerPx, setRunnerPx] = useState<number>(-64);
+    const rafRef = useRef<number | null>(null);
+    const animatedRoundRef = useRef<number | null>(null);
+
+    const animTo = (target: number, duration: number) => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        const start = performance.now();
+        const from = runnerPx;
+        const dx = target - from;
+        const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+        const step = (now: number) => {
+            const t = Math.min(1, (now - start) / duration);
+            setRunnerPx(from + dx * ease(t));
+            if (t < 1) {
+                rafRef.current = requestAnimationFrame(step);
+            } else {
+                rafRef.current = null;
+            }
+        };
+        rafRef.current = requestAnimationFrame(step);
+    };
+
+    useEffect(() => {
+        if (!isActive) {
+            setRunnerPx(-64);
+            animatedRoundRef.current = null;
+        }
+    }, [isActive]);
+
+    useEffect(() => {
+        if (uiPhase !== "running" || trackWidth <= 0 || !state.roundId) return;
+        if (animatedRoundRef.current === state.roundId) return;
+        animatedRoundRef.current = state.roundId;
+        setRunnerPx(-64);
+        const center = Math.round(trackWidth / 2);
+        animTo(center, 650);
+    }, [uiPhase, state.roundId, trackWidth]);
+
+    useEffect(() => {
+        if (uiPhase !== "crashed" || trackWidth <= 0) return;
+        const offRight = trackWidth + 96;
+        animTo(offRight, 700);
+        animatedRoundRef.current = null;
+    }, [uiPhase, trackWidth]);
+
+    useEffect(() => {
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        };
+    }, []);
 
     return (
-        <Card style={{ height: "248px", zIndex: 0 }} className={`bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden ${isActive ? styles.background : ""}`}>
+        <Card
+            style={{ height: "248px", zIndex: 0 }}
+            className={`bg-[#150f27] border-[#984EED80] mb-4 text-white relative overflow-hidden ${isActive ? styles.background : ""}`}
+        >
             <CardContent className="p-8 text-center flex flex-col items-center justify-center" style={{ paddingTop: 1 }}>
                 {!isActive && (
                     <>
@@ -170,7 +219,13 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
                                 pointerEvents: "none",
                             }}
                         >
-                            <Image src={"/rocket/begu.gif"} alt={i18n._(msg`runner`)} width={64} height={64} style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }} />
+                            <Image
+                                src={"/rocket/begu.gif"}
+                                alt={i18n._(msg`runner`)}
+                                width={64}
+                                height={64}
+                                style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px", objectFit: "contain" }}
+                            />
                         </div>
                     </div>
                 )}
