@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export type Bet = { amount: number; placed: boolean; betId?: number | null };
-
 type GamePhase = string;
 
 type GameState = {
@@ -23,27 +22,41 @@ type GameActions = {
     setAllBets: (next: Bet[]) => void;
 };
 
-type Ctx = GameState & GameActions;
+type Ctx = GameState | (GameState & GameActions);
 
-const GameContext = createContext<Ctx | null>(null);
 const STORAGE_KEY = "game-state";
+const defaultState: GameState = {
+    bets: [{ amount: 20, placed: false, betId: null }, { amount: 20, placed: false, betId: null }],
+    gamePhase: "waiting",
+    currentMultiplier: 1,
+    roundId: null,
+};
+const noopActions: GameActions = {
+    setBetAmount: () => {},
+    setBetPlaced: () => {},
+    resetBets: () => {},
+    setGamePhase: () => {},
+    setCurrentMultiplier: () => {},
+    setRoundId: () => {},
+    setAllBets: () => {},
+};
+
+const GameContext = createContext<Ctx>({ ...defaultState, ...noopActions });
 
 function load(): GameState {
-    if (typeof window === "undefined") {
-        return { bets: [{ amount: 20, placed: false, betId: null }, { amount: 20, placed: false, betId: null }], gamePhase: "waiting", currentMultiplier: 1, roundId: null };
-    }
+    if (typeof window === "undefined") return defaultState;
     try {
         const raw = window.sessionStorage.getItem(STORAGE_KEY);
-        if (!raw) throw new Error();
+        if (!raw) return defaultState;
         const parsed = JSON.parse(raw) as Partial<GameState>;
         return {
-            bets: Array.isArray(parsed.bets) && parsed.bets.length ? parsed.bets as Bet[] : [{ amount: 20, placed: false, betId: null }, { amount: 20, placed: false, betId: null }],
-            gamePhase: parsed.gamePhase ?? "waiting",
-            currentMultiplier: typeof parsed.currentMultiplier === "number" ? parsed.currentMultiplier : 1,
-            roundId: typeof parsed.roundId === "number" ? parsed.roundId : null,
+            bets: Array.isArray(parsed.bets) && parsed.bets.length ? (parsed.bets as Bet[]) : defaultState.bets,
+            gamePhase: typeof parsed.gamePhase === "string" ? parsed.gamePhase : defaultState.gamePhase,
+            currentMultiplier: typeof parsed.currentMultiplier === "number" ? parsed.currentMultiplier : defaultState.currentMultiplier,
+            roundId: typeof parsed.roundId === "number" ? parsed.roundId : defaultState.roundId,
         };
     } catch {
-        return { bets: [{ amount: 20, placed: false, betId: null }, { amount: 20, placed: false, betId: null }], gamePhase: "waiting", currentMultiplier: 1, roundId: null };
+        return defaultState;
     }
 }
 
@@ -56,16 +69,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         } catch {}
     }, [state]);
 
-    const api: Ctx = useMemo(
+    const value: Ctx = useMemo(
         () => ({
-            bets: state.bets,
-            gamePhase: state.gamePhase,
-            currentMultiplier: state.currentMultiplier,
-            roundId: state.roundId,
-            setBetAmount: (index, value) =>
-                setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, amount: value } : b)) })),
-            setBetPlaced: (index, betId) =>
-                setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, placed: !!betId, betId } : b)) })),
+            ...state,
+            setBetAmount: (index, value) => setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, amount: value } : b)) })),
+            setBetPlaced: (index, betId) => setState((s) => ({ ...s, bets: s.bets.map((b, i) => (i === index ? { ...b, placed: !!betId, betId } : b)) })),
             resetBets: () => setState((s) => ({ ...s, bets: s.bets.map((b) => ({ ...b, placed: false, betId: null })) })),
             setGamePhase: (phase) => setState((s) => ({ ...s, gamePhase: phase })),
             setCurrentMultiplier: (v) => setState((s) => ({ ...s, currentMultiplier: v })),
@@ -75,11 +83,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         [state]
     );
 
-    return <GameContext.Provider value={api}>{children}</GameContext.Provider>;
+    return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
 
 export function useGame() {
-    const ctx = useContext(GameContext);
-    if (!ctx) throw new Error("useGame must be used within GameProvider");
-    return ctx;
+    return useContext(GameContext);
 }
