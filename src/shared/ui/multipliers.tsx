@@ -97,14 +97,12 @@ export function Multipliers({
         load();
         if (pollTimer.current) window.clearInterval(pollTimer.current);
         pollTimer.current = window.setInterval(load, Math.max(500, pollMs)) as unknown as number;
-
         const onVis = () => {
             if (!document.hidden) load();
         };
         const onFocus = () => load();
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
-
         return () => {
             controllerRef.current.abort();
             if (pollTimer.current) window.clearInterval(pollTimer.current);
@@ -144,20 +142,21 @@ export function Multipliers({
             const prev = historySeen.current.get(row.roundId);
             if (prev === undefined || prev !== row.crashMultiplier) {
                 historySeen.current.set(row.roundId, row.crashMultiplier);
+                const ts = Date.parse(row.endTime);
                 newBatch.push({
                     id: `history-${row.roundId}-${uuidv4()}`,
                     label: formatX(row.crashMultiplier),
                     value: row.crashMultiplier,
-                    createdAt: now,
+                    createdAt: Number.isFinite(ts) ? ts : now,
                 });
             }
         }
 
         if (newBatch.length) {
-            const ordered = newBatch.sort((a, b) => a.createdAt - b.createdAt);
+            const orderedDesc = newBatch.sort((a, b) => b.createdAt - a.createdAt);
             setVisible((prev) => {
-                const next = [...ordered.reverse(), ...prev];
-                const trimmed = next.slice(0, visibleCount);
+                const merged = [...orderedDesc, ...prev];
+                const trimmed = merged.slice(0, visibleCount);
                 return trimmed;
             });
         }
