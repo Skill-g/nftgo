@@ -2,7 +2,7 @@
 
 import { Trans } from "@lingui/macro";
 import { Card, CardContent } from "@/shared/ui/card";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { BetControl } from "@/feature/betting-section/ui/bet-control";
 
 type Bet = { amount: number; betId: number | null };
@@ -37,14 +37,12 @@ export function BettingSection({
                                    placeBet,
                                    gamePhase,
                                    currentMultiplier,
-                                   onCashOut,
+                                   onCashOut
                                }: BettingSectionProps) {
     const phase = useStickyPhase(gamePhase);
     const isWaiting = useMemo(() => phase === "waiting", [phase]);
     const isRunning = useMemo(() => phase === "running", [phase]);
-
     const presetAmounts = [1, 5, 10, 20, 50];
-    const onSetBetAmount = useCallback((i: number, v: number) => setBetAmount(i, v), [setBetAmount]);
 
     return (
         <Card className="bg-[#231c46] border-none py-4">
@@ -61,7 +59,7 @@ export function BettingSection({
                             key={`bet-${i}`}
                             presetAmounts={presetAmounts}
                             betAmount1={bet.amount}
-                            setBetAmount1={(value: number) => onSetBetAmount(i, value)}
+                            setBetAmount1={(value: number) => setBetAmount(i, value)}
                             placed={bet.betId != null}
                             waiting={isWaiting}
                             isActive={isRunning}

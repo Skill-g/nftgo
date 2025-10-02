@@ -1,4 +1,5 @@
 "use client";
+
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
 import { Button } from "@/shared/ui/button";
@@ -40,22 +41,17 @@ export const BetControl = ({
                                isActive,
                                multiplier,
                                onPlaceBet,
-                               onCashOut,
+                               onCashOut
                            }: BetControlProps) => {
     const { i18n } = useLingui();
     const [showDepositModal, setShowDepositModal] = useState(false);
-
     const winSum = useMemo(() => betAmount1 * multiplier, [betAmount1, multiplier]);
-
     const canPlace = useMemo(() => !placed && waiting, [placed, waiting]);
     const canCashOut = useMemo(() => placed && isActive, [placed, isActive]);
     const isClosed = useMemo(() => !placed && !waiting, [placed, waiting]);
     const isWaitingPlaced = useMemo(() => placed && waiting, [placed, waiting]);
-
     const buttonDisabled = useMemo(() => !(canCashOut || canPlace), [canCashOut, canPlace]);
-
     const buttonStyle: CSSProperties = canCashOut ? { backgroundColor: "#FFCC00" } : {};
-
     const fixedButtonBox = "h-[64px] min-h-[64px] w-full rounded-[20px] font-bold";
     const buttonClass = cn(
         fixedButtonBox,
@@ -157,13 +153,7 @@ export const BetControl = ({
                 </div>
             </div>
             <div className="w-full py-2 px-1">
-                <Button
-                    onClick={onButtonClick}
-                    className={`${buttonClass} h-[100%]`}
-                    style={buttonStyle}
-                    disabled={buttonDisabled}
-                    type="button"
-                >
+                <Button onClick={onButtonClick} className={`${buttonClass} h-[100%]`} style={buttonStyle} disabled={buttonDisabled} type="button">
                     {buttonContent}
                 </Button>
             </div>

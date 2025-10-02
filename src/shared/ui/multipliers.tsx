@@ -3,50 +3,15 @@
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useBetsNow as useBetsNowReal } from "@/shared/hooks/useBetsNow";
-import { v4 as uuidv4 } from "uuid";
-import { getBackendHost } from "@/shared/lib/host";
 
 type QueueItem = { id: string; label: string; value: number; createdAt: number };
 type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-    return typeof v === "object" && v !== null;
-}
-function readMultiplier(v: unknown): number {
-    if (isRecord(v)) {
-        if (typeof v.multiplier === "number") return v.multiplier;
-        if (typeof v.crashMultiplier === "number") return v.crashMultiplier;
-        if (typeof v.multiplier === "string") {
-            const n = parseFloat(v.multiplier);
-            return Number.isFinite(n) ? n : 1;
-        }
-        if (typeof v.crashMultiplier === "string") {
-            const n = parseFloat(v.crashMultiplier);
-            return Number.isFinite(n) ? n : 1;
-        }
-    }
-    return 1;
-}
-function readBetId(v: unknown): number | null {
-    if (isRecord(v)) {
-        if (typeof v.betId === "number") return v.betId;
-        if (typeof v.roundId === "number") return v.roundId;
-        if (typeof v.betId === "string") {
-            const n = parseInt(v.betId, 10);
-            return Number.isFinite(n) ? n : null;
-        }
-        if (typeof v.roundId === "string") {
-            const n = parseInt(v.roundId, 10);
-            return Number.isFinite(n) ? n : null;
-        }
-    }
-    return null;
-}
 function formatX(v: number, frac = 2) {
     const n = Number.isFinite(v) ? v : 0;
     return `${n.toFixed(frac)}x`;
 }
+
 function gradientFor(value: number) {
     if (value > 5) return "linear-gradient(85deg, rgba(255, 204, 0, 0.80) -9.64%, rgba(132, 214, 255, 0.80) 72.06%)";
     if (value > 2) return "linear-gradient(85deg, rgba(0, 200, 255, 0.80) -9.64%, rgba(136, 132, 255, 0.80) 63.91%)";
@@ -63,24 +28,14 @@ type MultipliersProps = {
 };
 
 export function Multipliers({
-                                roundId,
-                                initData,
                                 maxConcurrent: visibleCount = 8,
-                                queueLimit: _queueLimit = 200,
                                 pollMs = 1000,
-                                trigger,
+                                trigger
                             }: MultipliersProps) {
     const { i18n } = useLingui();
-    const { bets: betsReal } = useBetsNowReal(roundId ?? undefined, initData);
-
-    const host = getBackendHost();
-    const base = `https://${host}/api/game/history`;
-
     const [visible, setVisible] = useState<QueueItem[]>([]);
     const [history, setHistory] = useState<HistoryRow[]>([]);
-
     const historySeen = useRef<Map<number, number>>(new Map());
-    const betsSeen = useRef<Map<number, number>>(new Map());
     const fetching = useRef(false);
     const pollTimer = useRef<number | null>(null);
     const controllerRef = useRef(new AbortController());
@@ -89,10 +44,10 @@ export function Multipliers({
         if (fetching.current) return;
         fetching.current = true;
         try {
-            const res = await fetch(`${base}?_=${Date.now()}`, {
+            const res = await fetch(`/api/game/history?_=${Date.now()}`, {
                 cache: "no-store",
                 headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-                signal: controllerRef.current.signal,
+                signal: controllerRef.current.signal
             });
             if (!res.ok) return;
             const data: HistoryRow[] = await res.json();
@@ -101,7 +56,7 @@ export function Multipliers({
         } catch {} finally {
             fetching.current = false;
         }
-    }, [base]);
+    }, []);
 
     useEffect(() => {
         controllerRef.current = new AbortController();
@@ -130,39 +85,22 @@ export function Multipliers({
     useEffect(() => {
         const now = Date.now();
         const newBatch: QueueItem[] = [];
-
-        const betsArray = Array.isArray(betsReal) ? betsReal : [betsReal];
-        for (const item of betsArray) {
-            const bid = readBetId(item);
-            if (bid === null) continue;
-            const m = readMultiplier(item);
-            const prev = betsSeen.current.get(bid);
-            if (prev === undefined || prev !== m) {
-                betsSeen.current.set(bid, m);
-                newBatch.push({
-                    id: `bet-${bid}-${uuidv4()}`,
-                    label: formatX(m),
-                    value: m,
-                    createdAt: now,
-                });
-            }
-        }
-
-        const sortedHistory = [...history].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime());
+        const sortedHistory = [...history].sort(
+            (a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime()
+        );
         for (const row of sortedHistory) {
             const prev = historySeen.current.get(row.roundId);
             if (prev === undefined || prev !== row.crashMultiplier) {
                 historySeen.current.set(row.roundId, row.crashMultiplier);
                 const ts = Date.parse(row.endTime);
                 newBatch.push({
-                    id: `history-${row.roundId}-${uuidv4()}`,
+                    id: `history-${row.roundId}-${row.endTime}`,
                     label: formatX(row.crashMultiplier),
                     value: row.crashMultiplier,
-                    createdAt: Number.isFinite(ts) ? ts : now,
+                    createdAt: Number.isFinite(ts) ? ts : now
                 });
             }
         }
-
         if (newBatch.length) {
             const orderedDesc = newBatch.sort((a, b) => b.createdAt - a.createdAt);
             setVisible((prev) => {
@@ -171,7 +109,7 @@ export function Multipliers({
                 return trimmed;
             });
         }
-    }, [betsReal, history, visibleCount]);
+    }, [history, visibleCount]);
 
     const pills = useMemo(() => visible, [visible]);
 
