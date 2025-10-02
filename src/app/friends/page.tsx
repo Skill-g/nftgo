@@ -124,6 +124,8 @@ export default function Page() {
         return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans> {error.message}</div>;
     }
 
+    const rowClass = isIOS ? "flex mb-30" : "flex mb-30 justify-between";
+
     return (
         <div className="flex flex-col gap-3">
             <div className="px-6 mb-6">
@@ -143,12 +145,13 @@ export default function Page() {
                 <Banner img={"/friends/ticket.png"} title={i18n._(msg`Активировать промокод`)} />
             </div>
             <FriendsList />
-            <div className="flex mb-30 justify-between">
+            <div className={rowClass}>
                 <Button
                     type="button"
-                    className="w-[85%] bg-gradient-to-r from-[#6100FF] to-[#B384FF] hover:bg-[#533189] text-white rounded-[12px] py-2 h-[45px] text-lg font-semibold mb-4"
+                    className={`${isIOS ? "w-full" : "w-[85%]"} bg-gradient-to-r from-[#6100FF] to-[#B384FF] hover:bg-[#533189] text-white rounded-[12px] py-2 h-[45px] text-lg font-semibold mb-4`}
                     onClick={handleInvite}
                     onTouchEnd={(e) => { e.preventDefault(); handleInvite(); }}
+                    style={isIOS ? { width: "100%" } : undefined}
                 >
                     <Trans>Пригласить друга</Trans>
                 </Button>
