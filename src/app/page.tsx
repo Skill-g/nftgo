@@ -11,6 +11,7 @@ import { useBalance } from "@/shared/hooks/useBalance";
 import { useGameStore } from "@/shared/store/game";
 import { useBetsStore } from "@/shared/store/bets";
 import type { Phase } from "@/shared/store/game";
+import {getBackendHost} from "@/shared/lib/host";
 
 export default function Page() {
     const { user } = useUserContext();
@@ -30,10 +31,11 @@ export default function Page() {
     const placeBet = useCallback(
         async (index: number) => {
             if (!user?.initData || !roundId) return;
+            const host = getBackendHost()
             const amount = bets[index].amount;
             setOptimistic(-amount);
             try {
-                const res = await fetch(`/api/game/${roundId}/bets`, {
+                const res = await fetch(`https://${host}/api/game/${roundId}/bets`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ initData: user.initData, amount })
@@ -56,9 +58,10 @@ export default function Page() {
         async (index: number) => {
             if (!user?.initData || !roundId) return;
             const betId = bets[index].betId;
+            const host = getBackendHost()
             if (!betId) return;
             try {
-                const res = await fetch(`/api/game/${roundId}/cashout`, {
+                const res = await fetch(`https://${host}/api/game/${roundId}/cashout`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ initData: user.initData, betId })
