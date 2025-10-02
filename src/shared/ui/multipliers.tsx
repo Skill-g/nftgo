@@ -3,6 +3,7 @@
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {getBackendHost} from "@/shared/lib/host";
 
 type QueueItem = { id: string; label: string; value: number; createdAt: number };
 type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
@@ -41,10 +42,12 @@ export function Multipliers({
     const controllerRef = useRef(new AbortController());
 
     const load = useCallback(async () => {
+        const host = getBackendHost()
         if (fetching.current) return;
         fetching.current = true;
+
         try {
-            const res = await fetch(`/api/game/history?_=${Date.now()}`, {
+            const res = await fetch(`https://${host}/api/game/history?_=${Date.now()}`, {
                 cache: "no-store",
                 headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
                 signal: controllerRef.current.signal
