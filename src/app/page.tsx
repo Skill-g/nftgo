@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/macro";
 import { Multipliers } from "@/shared/ui/multipliers";
 import { NewsBanner } from "@/shared/ui/news-banner";
 import { GameArea } from "@/shared/ui/gameArea/game-area";
@@ -16,6 +18,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function Page() {
+    const { i18n } = useLingui();
     const { user } = useUserContext();
     const initData = useMemo(() => user?.initData ?? "", [user]);
     const { setOptimistic, refresh } = useBalance(initData);
@@ -72,9 +75,13 @@ export default function Page() {
                 if (!res.ok) return;
                 await res.json();
                 const win = bet.amount * currentMultiplier;
-                toast(`Забрано по ${currentMultiplier.toFixed(2)}x — выигрыш ${win.toFixed(2)} TON`, {
+                const text = i18n._(
+                    t`Забрано по {multiplier}x — выигрыш {win} TON`,
+                    { multiplier: currentMultiplier.toFixed(2), win: win.toFixed(2) }
+                );
+                toast(text, {
                     position: "top-center",
-                    autoClose: 2000,
+                    autoClose: 4000,
                     closeOnClick: true,
                     hideProgressBar: true,
                     pauseOnHover: false,
@@ -87,7 +94,7 @@ export default function Page() {
                 await refresh();
             }
         },
-        [user?.initData, roundId, bets, refresh, setBetPlaced, currentMultiplier]
+        [user?.initData, roundId, bets, refresh, setBetPlaced, currentMultiplier, i18n]
     );
 
     return (

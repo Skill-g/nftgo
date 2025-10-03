@@ -79,7 +79,7 @@ export function Header (){
                     </div>
                 </div>
 
-                <div className="border-2 border-[#533189] rounded-lg px-1 py-0 flex items-center min-h-[40px]">
+                <div className="border-2 border-[#533189] rounded-lg py-0 flex items-center min-h-[40px]">
                     {isConnected ? (
                         <div className="flex items-center gap-2">
               <span className="text-white text-sm px-2">
@@ -88,7 +88,7 @@ export function Header (){
                             <Button onClick={handleConnect} className="bg-red-600 hover:bg-red-700 text-white rounded-md text-xs h-[30px]"><Trans>Disconnect</Trans></Button>
                         </div>
                     ) : (
-                        <Button onClick={handleConnect} className="bg-[#150f27] text-white px-6 py-2 rounded-lg text-lg"><Trans>Connect Wallet</Trans></Button>
+                        <Button onClick={handleConnect} className="bg-[#150f27] text-white px-3 py-2 rounded-lg text-lg"><Trans>Connect Wallet</Trans></Button>
                     )}
                 </div>
             </div>
