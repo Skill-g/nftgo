@@ -74,19 +74,24 @@ export default function Page() {
             const response = await fetch(`${backendUrl}/referral/link`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData })
+                body: JSON.stringify({ initData: user.initData }),
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
             if (isIOS) {
-                const url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(i18n._(msg`Присоединяйся!`))}`;
-                window.open(url, "_blank");
+                const webApp = window.Telegram?.WebApp;
+                if (webApp) {
+                    webApp.openTelegramLink(`tg://msg_url?url=${encodeURIComponent(shareUrl)}`);
+                    return;
+                } else {
+                    window.open(`tg://msg_url?url=${encodeURIComponent(shareUrl)}`, "_blank");
+                }
                 return;
             }
             const nav = navigator as NavigatorWithShare;
             if (nav.share) {
                 try {
-                    await nav.share({ url: shareUrl, text: i18n._(msg`Присоединяйся!`) });
+                    await nav.share({ url: shareUrl });
                     return;
                 } catch {}
             }
@@ -106,7 +111,7 @@ export default function Page() {
             const response = await fetch(`${backendUrl}/referral/link`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData })
+                body: JSON.stringify({ initData: user.initData }),
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
