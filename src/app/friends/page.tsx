@@ -74,18 +74,19 @@ export default function Page() {
             const response = await fetch(`${backendUrl}/referral/link`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData }),
+                body: JSON.stringify({ initData: user.initData })
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
             if (isIOS) {
-                window.open(`tg://msg_url?url=${encodeURIComponent(shareUrl)}`, "_blank");
+                const url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(i18n._(msg`Присоединяйся!`))}`;
+                window.open(url, "_blank");
                 return;
             }
             const nav = navigator as NavigatorWithShare;
             if (nav.share) {
                 try {
-                    await nav.share({ url: shareUrl });
+                    await nav.share({ url: shareUrl, text: i18n._(msg`Присоединяйся!`) });
                     return;
                 } catch {}
             }
@@ -105,7 +106,7 @@ export default function Page() {
             const response = await fetch(`${backendUrl}/referral/link`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData }),
+                body: JSON.stringify({ initData: user.initData })
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
