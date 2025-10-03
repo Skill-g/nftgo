@@ -1,5 +1,4 @@
 "use client";
-
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
 import { Button } from "@/shared/ui/button";

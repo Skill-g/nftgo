@@ -74,9 +74,15 @@ export function GameArea({ resetBets, setGamePhase, setCurrentMultiplier, setRou
     const { i18n } = useLingui();
     const { state } = useGame();
 
-    useEffect(() => { setGamePhase(state.phase); }, [state.phase, setGamePhase]);
-    useEffect(() => { setCurrentMultiplier(state.multiplier); }, [state.multiplier, setCurrentMultiplier]);
-    useEffect(() => { setRoundId(state.roundId ?? null); }, [state.roundId, setRoundId]);
+    useEffect(() => {
+        setGamePhase(state.phase);
+    }, [state.phase, setGamePhase]);
+    useEffect(() => {
+        setCurrentMultiplier(state.multiplier);
+    }, [state.multiplier, setCurrentMultiplier]);
+    useEffect(() => {
+        setRoundId(state.roundId ?? null);
+    }, [state.roundId, setRoundId]);
 
     useEffect(() => {
         if (state.phase === "crashed") {

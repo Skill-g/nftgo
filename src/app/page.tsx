@@ -11,7 +11,9 @@ import { useBalance } from "@/shared/hooks/useBalance";
 import { useGameStore } from "@/shared/store/game";
 import { useBetsStore } from "@/shared/store/bets";
 import type { Phase } from "@/shared/store/game";
-import {getBackendHost} from "@/shared/lib/host";
+import { getBackendHost } from "@/shared/lib/host";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Page() {
     const { user } = useUserContext();
@@ -31,7 +33,7 @@ export default function Page() {
     const placeBet = useCallback(
         async (index: number) => {
             if (!user?.initData || !roundId) return;
-            const host = getBackendHost()
+            const host = getBackendHost();
             const amount = bets[index].amount;
             setOptimistic(-amount);
             try {
@@ -57,8 +59,9 @@ export default function Page() {
     const onCashOut = useCallback(
         async (index: number) => {
             if (!user?.initData || !roundId) return;
-            const betId = bets[index].betId;
-            const host = getBackendHost()
+            const bet = bets[index];
+            const betId = bet.betId;
+            const host = getBackendHost();
             if (!betId) return;
             try {
                 const res = await fetch(`https://${host}/api/game/${roundId}/cashout`, {
@@ -68,17 +71,28 @@ export default function Page() {
                 });
                 if (!res.ok) return;
                 await res.json();
+                const win = bet.amount * currentMultiplier;
+                toast(`Забрано по ${currentMultiplier.toFixed(2)}x — выигрыш ${win.toFixed(2)} TON`, {
+                    position: "top-center",
+                    autoClose: 2000,
+                    closeOnClick: true,
+                    hideProgressBar: true,
+                    pauseOnHover: false,
+                    draggable: false,
+                    theme: "dark"
+                });
                 setBetPlaced(index, null);
                 await refresh();
             } catch {
                 await refresh();
             }
         },
-        [user?.initData, roundId, bets, refresh, setBetPlaced]
+        [user?.initData, roundId, bets, refresh, setBetPlaced, currentMultiplier]
     );
 
     return (
         <div className="flex flex-col gap-3">
+            <ToastContainer />
             <NewsBanner />
             <Multipliers roundId={roundId} initData={initData} />
             <div className="bg-[#8845F533]/20 h-[2px] w-[100%]" />
