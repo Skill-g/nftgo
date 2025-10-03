@@ -75,10 +75,7 @@ export default function Page() {
                 if (!res.ok) return;
                 await res.json();
                 const win = bet.amount * currentMultiplier;
-                const text = i18n._(
-                    t`Забрано по {multiplier}x — выигрыш {win} TON`,
-                    { multiplier: currentMultiplier.toFixed(2), win: win.toFixed(2) }
-                );
+                const text = i18n._(t`Забрано по ${currentMultiplier.toFixed(2)}x — выигрыш ${win.toFixed(2)} TON`);
                 toast(text, {
                     position: "top-center",
                     autoClose: 4000,
