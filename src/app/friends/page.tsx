@@ -78,16 +78,13 @@ export default function Page() {
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
-            if (isIOS) {
-                const webApp = window.Telegram?.WebApp;
-                if (webApp) {
-                    webApp.openTelegramLink(`tg://msg_url?url=${encodeURIComponent(shareUrl)}`);
-                    return;
-                } else {
-                    window.open(`tg://msg_url?url=${encodeURIComponent(shareUrl)}`, "_blank");
-                }
+            const tgUrl = `tg://msg_url?url=${encodeURIComponent(shareUrl)}`;
+            const webApp = window.Telegram?.WebApp;
+            if (webApp) {
+                webApp.openTelegramLink(tgUrl);
                 return;
             }
+            window.open(tgUrl, "_blank");
             const nav = navigator as NavigatorWithShare;
             if (nav.share) {
                 try {
