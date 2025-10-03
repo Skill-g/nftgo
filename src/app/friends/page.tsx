@@ -78,23 +78,31 @@ export default function Page() {
             });
             if (!response.ok) throw new Error("Failed to generate referral link");
             const { shareUrl } = await response.json();
-            const tgUrl = `tg://msg_url?url=${encodeURIComponent(shareUrl)}`;
-            const webApp = window.Telegram?.WebApp;
-            if (webApp) {
-                webApp.openTelegramLink(tgUrl);
+
+            const shareText = i18n._(msg`Присоединяйся по моей ссылке`);
+            const tmeShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+
+            const webApp = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
+
+            if (webApp?.openTelegramLink) {
+                webApp.openTelegramLink(tmeShare);
                 return;
             }
-            window.open(tgUrl, "_blank");
+
             const nav = navigator as NavigatorWithShare;
             if (nav.share) {
                 try {
-                    await nav.share({ url: shareUrl });
+                    await nav.share({ url: shareUrl, text: shareText, title: "Invite" });
                     return;
                 } catch {}
             }
+
+            window.open(tmeShare, "_blank");
+
             const r = await copyTextRobust(shareUrl);
-            if (r.ok) alert(i18n._(msg`Ссылка скопирована!`));
-            else window.open(shareUrl, "_blank");
+            if (r.ok) {
+                alert(i18n._(msg`Ссылка скопирована!`));
+            }
         } catch {
             alert(i18n._(msg`Не удалось сгенерировать ссылку. Попробуйте ещё раз.`));
         }
