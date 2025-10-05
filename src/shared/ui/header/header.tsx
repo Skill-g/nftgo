@@ -16,13 +16,12 @@ export function Header (){
         i18n: i18n
     } = useLingui();
 
-    const { isConnected, initialRestored, walletInfo, handleConnect } = useTonConnect()
+    const { initialRestored  } = useTonConnect()
     const { user } = useUserContext()
     const initData = useMemo(() => user?.initData ?? "", [user])
     const { balance, refresh } = useBalance(initData)
     const [showDepositModal, setShowDepositModal] = useState(false)
     const balanceText = useMemo(() => balance.toFixed(2), [balance])
-    const formatAddress = (address: string) => (!address ? "" : `${address.slice(0,4)}...${address.slice(-4)}`)
 
     if (!initialRestored) {
         return (
@@ -79,18 +78,6 @@ export function Header (){
                     </div>
                 </div>
 
-                <div className="border-2 border-[#533189] rounded-lg py-0 flex items-center min-h-[40px]">
-                    {isConnected ? (
-                        <div className="flex items-center gap-2">
-              <span className="text-white text-sm px-2">
-                {walletInfo?.account?.address && formatAddress(walletInfo.account.address)}
-              </span>
-                            <Button onClick={handleConnect} className="bg-red-600 hover:bg-red-700 text-white rounded-md text-xs h-[30px]"><Trans>Disconnect</Trans></Button>
-                        </div>
-                    ) : (
-                        <Button onClick={handleConnect} className="bg-[#150f27] text-white px-3 py-2 rounded-lg text-lg"><Trans>Connect Wallet</Trans></Button>
-                    )}
-                </div>
             </div>
             <div className={'bg-[#8845F533]/20 h-[2px] w-[100%] '}></div>
             <Deposit showDepositModal={showDepositModal} setShowDepositModal={(v) => { setShowDepositModal(v); if(!v) refresh(); }}/>

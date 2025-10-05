@@ -42,6 +42,7 @@ export function BettingSection({
     const phase = useStickyPhase(gamePhase);
     const isWaiting = useMemo(() => phase === "waiting", [phase]);
     const isRunning = useMemo(() => phase === "running", [phase]);
+
     const presetAmounts = [1, 5, 10, 20, 50];
 
     return (
@@ -52,14 +53,16 @@ export function BettingSection({
             <Trans>Выбрать тип ставки</Trans>
           </span>
                 </div>
+
                 <div className="flex gap-2 mb-2" />
+
                 <div className="space-y-2">
                     {bets.map((bet, i) => (
                         <BetControl
                             key={`bet-${i}`}
                             presetAmounts={presetAmounts}
                             betAmount1={bet.amount}
-                            setBetAmount1={(value: number) => setBetAmount(i, value)}
+                            setBetAmount1={(value: number) => setBetAmount(i, Number.isFinite(value) ? value : 0)}
                             placed={bet.betId != null}
                             waiting={isWaiting}
                             isActive={isRunning}

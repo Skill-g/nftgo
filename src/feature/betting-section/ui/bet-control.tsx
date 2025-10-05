@@ -1,10 +1,11 @@
 "use client";
+
 import { useLingui } from "@lingui/react";
 import { Trans, msg } from "@lingui/macro";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Minus, Plus } from "lucide-react";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import type { CSSProperties } from "react";
 import { Deposit } from "@/feature/deposit";
 
@@ -31,6 +32,12 @@ function cn(...xs: Array<string | false>) {
     return xs.filter(Boolean).join(" ");
 }
 
+const normalize = (s: string) => s.replace(",", ".");
+const toNumberSafe = (s: string) => {
+    const n = Number(normalize(s.trim()));
+    return Number.isFinite(n) ? n : 0;
+};
+
 export const BetControl = ({
                                presetAmounts,
                                betAmount1,
@@ -44,6 +51,18 @@ export const BetControl = ({
                            }: BetControlProps) => {
     const { i18n } = useLingui();
     const [showDepositModal, setShowDepositModal] = useState(false);
+    const [inputValue, setInputValue] = useState<string>(String(betAmount1 ?? 0));
+    useEffect(() => {
+        setInputValue(String(betAmount1 ?? 0));
+    }, [betAmount1]);
+
+    const commitInput = useCallback(() => {
+        const num = toNumberSafe(inputValue);
+        const safe = Math.max(0, num);
+        setBetAmount1(safe);
+        return safe;
+    }, [inputValue, setBetAmount1]);
+
     const winSum = useMemo(() => betAmount1 * multiplier, [betAmount1, multiplier]);
     const canPlace = useMemo(() => !placed && waiting, [placed, waiting]);
     const canCashOut = useMemo(() => placed && isActive, [placed, isActive]);
@@ -66,9 +85,10 @@ export const BetControl = ({
             return;
         }
         if (canPlace) {
+            commitInput();
             onPlaceBet();
         }
-    }, [canCashOut, canPlace, onCashOut, onPlaceBet]);
+    }, [canCashOut, canPlace, onCashOut, onPlaceBet, commitInput]);
 
     const buttonContent = useMemo(() => {
         if (canCashOut) {
@@ -99,6 +119,19 @@ export const BetControl = ({
 
     const controlsDisabled = useMemo(() => placed || !waiting, [placed, waiting]);
 
+    const step = 0.1;
+    const inc = useCallback(() => {
+        const next = Math.max(0, Number((betAmount1 + step).toFixed(6)));
+        setBetAmount1(next);
+        setInputValue(String(next).replace(".", ","));
+    }, [betAmount1, setBetAmount1]);
+
+    const dec = useCallback(() => {
+        const next = Math.max(0, Number((betAmount1 - step).toFixed(6)));
+        setBetAmount1(next);
+        setInputValue(String(next).replace(".", ","));
+    }, [betAmount1, setBetAmount1]);
+
     return (
         <div className="flex bg-[#262352] rounded-[20px] p-2">
             <div className="flex flex-col bg-[#1B1636] rounded-[20px] items-center p-2 my-2 ml-0.5 gap-3">
@@ -107,7 +140,7 @@ export const BetControl = ({
                         size="sm"
                         variant="ghost"
                         className="w-8 h-8 p-0 text-[#969696] hover:text-white"
-                        onClick={() => setBetAmount1(Math.max(1, betAmount1 - 1))}
+                        onClick={dec}
                         disabled={controlsDisabled}
                         type="button"
                     >
@@ -115,18 +148,31 @@ export const BetControl = ({
                             <Minus className="bg-[#241E44] w-4 h-4" />
                         </div>
                     </Button>
+
                     <Input
-                        type="number"
-                        value={betAmount1}
-                        onChange={(event) => setBetAmount1(Number(event.target.value))}
-                        className="border-none text-white font-bold text-xl min-w-[40px] text-center [appearance:textfield]"
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        value={inputValue}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            if (/^[0-9]*[.,]?[0-9]*$/.test(v) || v === "") {
+                                setInputValue(v);
+                            }
+                        }}
+                        onBlur={() => {
+                            const safe = commitInput();
+                            setInputValue(String(safe).replace(".", ","));
+                        }}
+                        className="border-none text-white font-bold text-xl min-w-[60px] text-center [appearance:textfield]"
                         disabled={controlsDisabled}
                     />
+
                     <Button
                         size="sm"
                         variant="ghost"
                         className="w-8 h-8 p-0 text-[#969696] hover:text-white"
-                        onClick={() => setBetAmount1(betAmount1 + 1)}
+                        onClick={inc}
                         disabled={controlsDisabled}
                         type="button"
                     >
@@ -135,27 +181,33 @@ export const BetControl = ({
                         </div>
                     </Button>
                 </div>
-                <div className="flex gap-1">
+
+                <div className="flex flex-wrap gap-1 justify-center">
                     {presetAmounts.map((amount) => (
                         <Button
                             key={amount}
                             size="sm"
                             variant="ghost"
-                            className="text-[#969696] hover:text-white bg-[#241E44] rounded-[5px] w-[30px] h-[20px] text-xs"
-                            onClick={() => setBetAmount1(amount)}
+                            className="text-[#969696] hover:text-white bg-[#241E44] rounded-[5px] min-w-[36px] h-[24px] text-xs px-2"
+                            onClick={() => {
+                                setBetAmount1(amount);
+                                setInputValue(String(amount).replace(".", ",")); // отображаем с запятой для единообразия
+                            }}
                             disabled={controlsDisabled}
                             type="button"
                         >
-                            {amount}
+                            {String(amount).replace(".", ",")}
                         </Button>
                     ))}
                 </div>
             </div>
+
             <div className="w-full py-2 px-1">
                 <Button onClick={onButtonClick} className={`${buttonClass} h-[100%]`} style={buttonStyle} disabled={buttonDisabled} type="button">
                     {buttonContent}
                 </Button>
             </div>
+
             <Deposit showDepositModal={showDepositModal} setShowDepositModal={setShowDepositModal} />
         </div>
     );
