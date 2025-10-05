@@ -188,7 +188,7 @@ export const BetControl = ({
                             key={amount}
                             size="sm"
                             variant="ghost"
-                            className="text-[#969696] hover:text-white bg-[#241E44] rounded-[5px] min-w-[30px] h-[24px] text-xs px-0"
+                            className="text-[#969696] hover:text-white bg-[#241E44] rounded-[5px] min-w-[25px] h-[25px] text-xs px-0"
                             onClick={() => {
                                 setBetAmount1(amount);
                                 setInputValue(String(amount).replace(".", ","));
