@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserContext } from "@/shared/context/UserContext";
-import { useGameApi } from "@/shared/lib/game-api";
 import { makeGameSocket, WSMessage } from "@/shared/lib/game-socket";
-import { getBackendHost } from "@/shared/lib/host";
+import {
+    mergeCurrentRound,
+    setKnownRoundId,
+    useCurrentRoundStore
+} from "@/shared/lib/current-round-store";
+import type { CurrentRound } from "@/shared/types/current-round";
 
 export type GamePhase = "waiting" | "running" | "crashed";
 
@@ -26,22 +30,12 @@ type WaitMeta = {
     waitTotal: number;
 };
 
-type CurrentRound = {
-    roundId: number;
-    currentMultiplier?: number;
-    betDeadline?: string;
-    gameStartTime?: string;
-    isGamePhase?: boolean;
-    serverSeedHash?: string;
-};
-
 const WAIT_META_KEY = "game_wait_meta";
 
 export function useGame() {
     const { user } = useUserContext();
     const initData = user?.initData || "";
-    const { fetchCurrentRound } = useGameApi();
-    const host = getBackendHost();
+    const { getCurrentRound } = useCurrentRoundStore();
 
     const [state, setState] = useState<ClientGameState>({
         phase: "waiting",
@@ -152,19 +146,20 @@ export function useGame() {
         return () => window.clearTimeout(id);
     }, []);
 
-    const pullCurrentWithServerDate = useCallback(async (): Promise<CurrentRound> => {
-        if (!host) return fetchCurrentRound() as Promise<CurrentRound>;
-        const res = await fetch(`https://${host}/api/game/current?_=${Date.now()}`, { cache: "no-store" });
-        const dateHeader = res.headers.get("date");
-        if (dateHeader) {
-            const srv = Date.parse(dateHeader);
-            if (Number.isFinite(srv)) {
-                serverOffsetRef.current = srv - Date.now();
+    const pullCurrentWithServerDate = useCallback(
+        async ({ force = false }: { force?: boolean } = {}): Promise<CurrentRound> => {
+            const snapshot = await getCurrentRound({ force });
+            const dateHeader = snapshot.serverDate;
+            if (dateHeader) {
+                const srv = Date.parse(dateHeader);
+                if (Number.isFinite(srv)) {
+                    serverOffsetRef.current = srv - Date.now();
+                }
             }
-        }
-        const json = (await res.json()) as CurrentRound;
-        return json;
-    }, [fetchCurrentRound, host]);
+            return snapshot.round;
+        },
+        [getCurrentRound]
+    );
 
     const connect = useCallback(async () => {
         if (!initData) return;
@@ -206,6 +201,16 @@ export function useGame() {
                                 multiplier: typeof msg.currentMultiplier === "number" ? msg.currentMultiplier : s.multiplier,
                                 phase: msg.isGamePhase ? "running" : "waiting"
                             }));
+                            if (typeof msg.roundId === "number") {
+                                mergeCurrentRound({
+                                    roundId: msg.roundId,
+                                    currentMultiplier: msg.currentMultiplier,
+                                    betDeadline: msg.betDeadline,
+                                    gameStartTime: msg.gameStartTime,
+                                    isGamePhase: msg.isGamePhase,
+                                    serverSeedHash: msg.serverSeedHash
+                                });
+                            }
                             if (typeof msg.roundId === "number" && typeof msg.betDeadline === "string") {
                                 const m = loadWaitMeta();
                                 const prefer = m && m.roundId === msg.roundId ? m.waitTotal : undefined;
@@ -214,6 +219,13 @@ export function useGame() {
                             break;
                         }
                         case "round_start": {
+                            setKnownRoundId(msg.roundId);
+                            if (typeof msg.serverSeedHash === "string") {
+                                mergeCurrentRound({
+                                    roundId: msg.roundId,
+                                    serverSeedHash: msg.serverSeedHash
+                                });
+                            }
                             setState(s => ({
                                 ...s,
                                 phase: "waiting",
@@ -222,7 +234,7 @@ export function useGame() {
                             }));
                             (async () => {
                                 try {
-                                    const r = await pullCurrentWithServerDate();
+                                    const r = await pullCurrentWithServerDate({ force: true });
                                     const m = loadWaitMeta();
                                     const prefer = m && m.roundId === r.roundId ? m.waitTotal : undefined;
                                     startTimer(r.roundId, r.betDeadline, prefer);
@@ -231,6 +243,7 @@ export function useGame() {
                             break;
                         }
                         case "game_start": {
+                            setKnownRoundId(msg.roundId);
                             clearWaitMeta();
                             clearTimer();
                             setState(s => ({
@@ -270,6 +283,15 @@ export function useGame() {
                                     roundId: typeof msg.roundId === "number" ? msg.roundId : prev.roundId
                                 };
                             });
+                            if (typeof msg.roundId === "number") {
+                                mergeCurrentRound({
+                                    roundId: msg.roundId,
+                                    currentMultiplier: msg.multiplier,
+                                    betDeadline: msg.betDeadline,
+                                    gameStartTime: msg.gameStartTime,
+                                    isGamePhase: msg.isGamePhase
+                                });
+                            }
                             break;
                         }
                         case "pong": {
