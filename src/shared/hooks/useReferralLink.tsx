@@ -1,48 +1,28 @@
-"use client"
-import { useState } from "react";
-import { useTelegramAuth } from "./useTelegramAuth";
+"use client";
+import { useCallback, useState } from "react";
+import { useUserContext } from "@/shared/context/UserContext";
 
 export function useReferralLink() {
+    const { getReferralLink } = useUserContext();
     const [referralLink, setReferralLink] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
-    const { initData, loading: authLoading, error: authError } = useTelegramAuth();
 
-    const generateReferralLink = async () => {
-        if (authLoading) return null;
-        if (authError) {
-            setError(authError);
-            return null;
-        }
-
+    const generateReferralLink = useCallback(async () => {
+        if (referralLink) return referralLink;
         try {
             setLoading(true);
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-            if (!backendUrl) {
-                throw new Error("NEXT_PUBLIC_BACKEND_URL is not defined");
-            }
-
-            if (!initData) {
-                throw new Error("Telegram WebApp is not initialized");
-            }
-
-            const response = await fetch(`${backendUrl}/referral/link`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData }),
-            });
-
-            if (!response.ok) throw new Error("Failed to generate referral link");
-            const data = await response.json();
-            setReferralLink(data.shareUrl);
-            return data.shareUrl;
+            const link = await getReferralLink();
+            setReferralLink(link);
+            setError(null);
+            return link;
         } catch (err) {
             setError(err as Error);
             return null;
         } finally {
             setLoading(false);
         }
-    };
+    }, [getReferralLink, referralLink]);
 
     return { referralLink, loading, error, generateReferralLink };
 }

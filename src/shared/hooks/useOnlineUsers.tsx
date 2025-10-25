@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchOnlineUsersCountCached } from "@/shared/lib/backendCached";
 
 export function useOnlineUsers() {
     const [onlineCount, setOnlineCount] = useState<number | null>(null);
@@ -6,21 +7,24 @@ export function useOnlineUsers() {
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        const fetchOnlineUsers = async () => {
+        let active = true;
+        const load = async () => {
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/online-users`);
-                console.log(response)
-                if (!response.ok) throw new Error("Failed to fetch online users");
-                const data = await response.json();
-                setOnlineCount(data.count);
+                const count = await fetchOnlineUsersCountCached();
+                if (!active) return;
+                setOnlineCount(count);
             } catch (err) {
+                if (!active) return;
                 setError(err as Error);
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
             }
         };
 
-        fetchOnlineUsers();
+        load();
+        return () => {
+            active = false;
+        };
     }, []);
 
     return { onlineCount, loading, error };
