@@ -5,7 +5,7 @@ import { useUserContext } from "@/shared/context/UserContext";
 import { getBackendHost } from "@/shared/lib/host";
 import type { CurrentRound } from "@/shared/types/current-round";
 
-const TTL_MS = 1500;
+const TTL_MS = 4000;
 
 type CacheState = {
     round: CurrentRound | null;
@@ -106,7 +106,7 @@ export function useCurrentRoundStore() {
             if (initData) headers["x-telegram-init-data"] = initData;
 
             const fetchPromise = fetch(
-                `https://${host}/api/game/current?_=${Date.now()}`,
+                `https://${host}/api/game/current`,
                 { cache: "no-store", headers }
             ).then(async (res) => {
                 if (!res.ok) throw new Error(`current round request failed ${res.status}`);

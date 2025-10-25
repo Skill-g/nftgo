@@ -3,10 +3,9 @@
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {getBackendHost} from "@/shared/lib/host";
+import { useHistoryStore, type HistoryRow } from "@/shared/lib/history-store";
 
 type QueueItem = { id: string; label: string; value: number; createdAt: number };
-type HistoryRow = { roundId: number; crashMultiplier: number; endTime: string };
 
 function formatX(v: number, frac = 2) {
     const n = Number.isFinite(v) ? v : 0;
@@ -34,46 +33,41 @@ export function Multipliers({
                                 trigger
                             }: MultipliersProps) {
     const { i18n } = useLingui();
+    const { getHistory, history: cachedHistory } = useHistoryStore();
     const [visible, setVisible] = useState<QueueItem[]>([]);
-    const [history, setHistory] = useState<HistoryRow[]>([]);
+    const [history, setHistory] = useState<HistoryRow[]>(() => cachedHistory ?? []);
     const historySeen = useRef<Map<number, number>>(new Map());
-    const fetching = useRef(false);
     const pollTimer = useRef<number | null>(null);
-    const controllerRef = useRef(new AbortController());
+    const disposedRef = useRef(false);
 
-    const load = useCallback(async () => {
-        const host = getBackendHost()
-        if (fetching.current) return;
-        fetching.current = true;
-
-        try {
-            const res = await fetch(`https://${host}/api/game/history?_=${Date.now()}`, {
-                cache: "no-store",
-                headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-                signal: controllerRef.current.signal
-            });
-            if (!res.ok) return;
-            const data: HistoryRow[] = await res.json();
-            if (!Array.isArray(data)) return;
-            setHistory(data);
-        } catch {} finally {
-            fetching.current = false;
-        }
-    }, []);
+    const load = useCallback(
+        async (force = false) => {
+            try {
+                const snapshot = await getHistory({ force });
+                if (disposedRef.current) return;
+                setHistory(snapshot.history);
+            } catch {}
+        },
+        [getHistory]
+    );
 
     useEffect(() => {
-        controllerRef.current = new AbortController();
-        load();
+        disposedRef.current = false;
+        void load(true);
         if (pollTimer.current) window.clearInterval(pollTimer.current);
-        pollTimer.current = window.setInterval(load, Math.max(500, pollMs)) as unknown as number;
+        pollTimer.current = window.setInterval(() => {
+            void load();
+        }, Math.max(500, pollMs)) as unknown as number;
         const onVis = () => {
-            if (!document.hidden) load();
+            if (!document.hidden) void load(true);
         };
-        const onFocus = () => load();
+        const onFocus = () => {
+            void load(true);
+        };
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("focus", onFocus);
         return () => {
-            controllerRef.current.abort();
+            disposedRef.current = true;
             if (pollTimer.current) window.clearInterval(pollTimer.current);
             pollTimer.current = null;
             document.removeEventListener("visibilitychange", onVis);
@@ -82,7 +76,7 @@ export function Multipliers({
     }, [pollMs, load]);
 
     useEffect(() => {
-        if (trigger != null) load();
+        if (trigger != null) void load(true);
     }, [trigger, load]);
 
     useEffect(() => {
