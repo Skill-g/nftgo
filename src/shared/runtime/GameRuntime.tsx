@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useGameStore } from "@/shared/store/game";
-import { getBackendHost } from "@/shared/lib/host";
 import type { GameState as StoreState, Phase } from "@/shared/store/game";
+import { useCurrentRoundStore } from "@/shared/lib/current-round-store";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null;
@@ -47,6 +47,7 @@ function parseCurrent(json: unknown): Partial<StoreState> | null {
 export default function GameRuntime() {
     const setFromServer = useGameStore((s) => s.setFromServer);
     const tick = useGameStore((s) => s.tick);
+    const { getCurrentRound } = useCurrentRoundStore();
     const rafRef = useRef<number | null>(null);
     const lastRef = useRef<number>(0);
     const pollRef = useRef<number | null>(null);
@@ -68,25 +69,24 @@ export default function GameRuntime() {
 
     useEffect(() => {
         let aborted = false;
-        const host = getBackendHost();
-        const url = `https://${host}/api/game/current`;
-        const load = async () => {
+        const load = async (force = false) => {
             try {
-                const res = await fetch(`${url}?_=${Date.now()}`, { cache: "no-store" });
-                if (!res.ok) return;
-                const json: unknown = await res.json();
-                const parsed = parseCurrent(json);
-                if (!parsed || aborted) return;
+                const snapshot = await getCurrentRound({ force });
+                if (aborted) return;
+                const parsed = parseCurrent(snapshot.round);
+                if (!parsed) return;
                 setFromServer(parsed);
             } catch {}
         };
-        load();
-        const onFocus = () => load();
+        load(true);
+        const onFocus = () => load(true);
         const onVis = () => {
-            if (!document.hidden) load();
+            if (!document.hidden) load(true);
         };
         if (pollRef.current) window.clearInterval(pollRef.current);
-        pollRef.current = window.setInterval(load, 1000);
+        pollRef.current = window.setInterval(() => {
+            void load();
+        }, 1000);
         window.addEventListener("focus", onFocus);
         document.addEventListener("visibilitychange", onVis);
         return () => {
@@ -96,7 +96,7 @@ export default function GameRuntime() {
             window.removeEventListener("focus", onFocus);
             document.removeEventListener("visibilitychange", onVis);
         };
-    }, [setFromServer]);
+    }, [getCurrentRound, setFromServer]);
 
     return null;
 }

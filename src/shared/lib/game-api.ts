@@ -3,14 +3,7 @@
 import { useCallback } from "react";
 import { useUserContext } from "@/shared/context/UserContext";
 import { getBackendHost } from "@/shared/lib/host";
-
-export type CurrentRound = {
-    roundId: number;
-    serverSeedHash: string;
-    startTime: string;
-    betDeadline: string;
-    currentMultiplier: number;
-};
+import type { CurrentRound } from "@/shared/types/current-round";
 
 export function useGameApi() {
     const { user } = useUserContext();
