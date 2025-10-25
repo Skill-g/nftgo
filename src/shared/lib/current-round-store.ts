@@ -64,14 +64,16 @@ function hasPartialData(partial: Partial<CurrentRound>): boolean {
 
 export function mergeCurrentRound(partial: Partial<CurrentRound> & { roundId: number }) {
     const prev = cache.round && cache.round.roundId === partial.roundId ? cache.round : null;
+
     if (!prev) {
         if (hasPartialData(partial)) {
-            updateCache({ roundId: partial.roundId, ...partial }, cache.serverDate, Date.now());
+            updateCache({ ...partial, roundId: partial.roundId } as CurrentRound, cache.serverDate, Date.now());
         } else {
             setKnownRoundId(partial.roundId);
         }
         return;
     }
+
     const merged: CurrentRound = { ...prev, ...partial };
     updateCache(merged, cache.serverDate, Date.now());
 }
@@ -102,16 +104,21 @@ export function useCurrentRoundStore() {
 
             const headers: Record<string, string> = {};
             if (initData) headers["x-telegram-init-data"] = initData;
-            const fetchPromise = fetch(`https://${host}/api/game/current?_=${Date.now()}`, { cache: "no-store", headers }).then(
-                async (res) => {
-                    if (!res.ok) throw new Error(`current round request failed ${res.status}`);
-                    const round = (await res.json()) as CurrentRound;
-                    const receivedAt = Date.now();
-                    const serverDate = res.headers.get("date");
-                    updateCache(round, serverDate, receivedAt);
-                    return { round, receivedAt, serverDate };
-                }
-            );
+
+            const fetchPromise = fetch(
+                `https://${host}/api/game/current?_=${Date.now()}`,
+                { cache: "no-store", headers }
+            ).then(async (res) => {
+                if (!res.ok) throw new Error(`current round request failed ${res.status}`);
+
+                const round = (await res.json()) as CurrentRound;
+                const receivedAt = Date.now();
+                const serverDate = res.headers.get("date");
+
+                updateCache(round, serverDate, receivedAt);
+
+                return { round, receivedAt, serverDate };
+            });
 
             const finalPromise = fetchPromise.then(
                 (result) => {
@@ -123,6 +130,7 @@ export function useCurrentRoundStore() {
                     throw err;
                 }
             );
+
             cache.inflight = finalPromise;
             return finalPromise;
         },
