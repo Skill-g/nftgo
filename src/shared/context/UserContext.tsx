@@ -2,7 +2,7 @@
 import { Trans } from '@lingui/macro';
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authWithBackend, AuthedUser } from "@/feature/auth/authWithBackend";
-import { referralSummaryCached, ReferralSummary } from "@/shared/lib/referralSummary";
+import { referralLinkCached, referralSummaryCached, ReferralSummary } from "@/shared/lib/referralSummary";
 
 type TelegramUser = AuthedUser & { initData: string }
 
@@ -12,6 +12,7 @@ type UserContextType = {
     loading: boolean
     error: Error | null
     setPreferredLanguage: (lang: "ru" | "en") => Promise<void>
+    getReferralLink: () => Promise<string>
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -19,12 +20,14 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<TelegramUser | null>(null);
     const [referralData, setReferralData] = useState<ReferralSummary | null>(null);
+    const [referralLink, setReferralLink] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
         const initData = tg?.initData || "";
+        setReferralLink(null);
         if (!initData) {
             setLoading(false);
             return;
@@ -42,6 +45,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
         })();
     }, []);
+
+    const getReferralLink = useCallback(async () => {
+        if (!user?.initData) throw new Error("initData is missing");
+        if (referralLink) return referralLink;
+        const link = await referralLinkCached(user.initData);
+        setReferralLink(link);
+        return link;
+    }, [user?.initData, referralLink]);
 
     const setPreferredLanguage = useCallback(
         async (lang: "ru" | "en") => {
@@ -65,7 +76,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (error) return <div className="text-red-400 text-center"><Trans>Ошибка:</Trans>{error.message}</div>;
 
     return (
-        <UserContext.Provider value={{ user, referralData, loading, error, setPreferredLanguage }}>
+        <UserContext.Provider value={{ user, referralData, loading, error, setPreferredLanguage, getReferralLink }}>
             {children}
         </UserContext.Provider>
     );

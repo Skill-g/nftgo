@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTelegramAuth } from "./useTelegramAuth";
+import { referralSummaryCached } from "@/shared/lib/referralSummary";
 
 type ReferralSummary = {
     totalReferrals: number;
@@ -28,14 +29,7 @@ export function useReferralSummary() {
                     throw new Error("NEXT_PUBLIC_BACKEND_URL is not defined");
                 }
 
-                const response = await fetch(`${backendUrl}/referral/summary`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ initData: user.initData }),
-                });
-
-                if (!response.ok) throw new Error("Failed to fetch referral summary");
-                const data = await response.json();
+                const data = await referralSummaryCached(user.initData);
                 setReferralData(data);
             } catch (err) {
                 setError(err as Error);

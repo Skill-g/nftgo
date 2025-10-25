@@ -1,5 +1,6 @@
 "use client"
 import { createContext, useContext, useState, useEffect } from "react";
+import { fetchOnlineUsersCountCached } from "@/shared/lib/backendCached";
 
 type OnlineUsersContextType = {
     onlineCount: number | null;
@@ -15,25 +16,24 @@ export function OnlineUsersProvider({ children }: { children: React.ReactNode })
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        const fetchOnlineUsers = async () => {
+        let active = true;
+        const load = async () => {
             try {
-                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-                if (!backendUrl) {
-                    throw new Error("NEXT_PUBLIC_BACKEND_URL is not defined");
-                }
-
-                const response = await fetch(`${backendUrl}/api/online-users`);
-                if (!response.ok) throw new Error("Failed to fetch online users");
-                const data = await response.json();
-                setOnlineCount(data.count);
+                const count = await fetchOnlineUsersCountCached();
+                if (!active) return;
+                setOnlineCount(count);
             } catch (err) {
+                if (!active) return;
                 setError(err as Error);
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
             }
         };
 
-        fetchOnlineUsers();
+        load();
+        return () => {
+            active = false;
+        };
     }, []);
 
     return (

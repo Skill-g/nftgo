@@ -4,12 +4,7 @@ import {useEffect, useMemo, useState} from "react"
 import {BoardItem} from "@/feature/leaderboard/ui/board-item"
 import {Thead} from "@/shared/ui/thead"
 import {useUserContext} from "@/shared/context/UserContext"
-
-type TopBettor = {
-    initials: string
-    games: number
-    sum: number
-}
+import { fetchTopBettorsCached } from "@/shared/lib/backendCached"
 
 type Player = {
     rank: number
@@ -45,21 +40,7 @@ export function Leaderboard() {
             setLoading(true)
             setError(null)
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/top-bettors`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
-                    },
-                    body: JSON.stringify({ initData })
-                })
-                if (!res.ok) {
-                    if (res.status === 429) {
-                        throw new Error("Too many requests. Try again later.")
-                    }
-                    throw new Error(`Request failed: ${res.status}`)
-                }
-                const data: TopBettor[] = await res.json()
+                const data = await fetchTopBettorsCached(initData)
                 const mapped: Player[] = (Array.isArray(data) ? data : []).slice(0, 20).map((item, idx) => ({
                     rank: idx + 1,
                     name: item.initials,

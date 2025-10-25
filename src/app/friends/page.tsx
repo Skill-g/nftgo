@@ -3,7 +3,7 @@
 import { useLingui } from '@lingui/react';
 import { Trans, msg } from '@lingui/macro';
 import { useUserContext } from "@/shared/context/UserContext";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CodeModal } from "@/feature/code-modal";
 import { Button } from "@/shared/ui/button";
 import { SquaresUnite } from "lucide-react";
@@ -11,6 +11,7 @@ import { Banner } from "@/shared/ui/banner";
 import Image from "next/image";
 import { ReferralBalance } from "@/feature/referral-balance";
 import { FriendsList } from "@/feature/friends-list";
+import { useReferralLink } from "@/shared/hooks/useReferralLink";
 
 type NavigatorWithShare = Navigator & {
     share?: (data: ShareData) => Promise<void>;
@@ -61,23 +62,28 @@ export default function Page() {
     const { i18n } = useLingui();
     const [showPromoModal, setShowPromoModal] = useState(false);
     const { user, loading, error } = useUserContext();
+    const { referralLink, generateReferralLink } = useReferralLink();
     const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
         setIsIOS(isiOSUserAgent(navigator.userAgent));
     }, []);
 
+    useEffect(() => {
+        if (!user || referralLink) return;
+        void generateReferralLink();
+    }, [user, referralLink, generateReferralLink]);
+
+    const resolveReferralLink = useCallback(async () => {
+        const url = referralLink || (await generateReferralLink());
+        if (!url) throw new Error("Failed to resolve referral link");
+        return url;
+    }, [referralLink, generateReferralLink]);
+
     const handleInvite = async () => {
         if (!user) return;
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL!;
-            const response = await fetch(`${backendUrl}/referral/link`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData }),
-            });
-            if (!response.ok) throw new Error("Failed to generate referral link");
-            const { shareUrl } = await response.json();
+            const shareUrl = await resolveReferralLink();
 
             const shareText = i18n._(msg`Присоединяйся по моей ссылке`);
             const tmeShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
@@ -111,15 +117,7 @@ export default function Page() {
     const handleCopyLink = async () => {
         if (!user) return;
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-            if (!backendUrl) throw new Error("NEXT_PUBLIC_BACKEND_URL is not defined");
-            const response = await fetch(`${backendUrl}/referral/link`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ initData: user.initData }),
-            });
-            if (!response.ok) throw new Error("Failed to generate referral link");
-            const { shareUrl } = await response.json();
+            const shareUrl = await resolveReferralLink();
             const r = await copyTextRobust(shareUrl);
             if (r.ok) {
                 alert(i18n._(msg`Ссылка скопирована!`));
