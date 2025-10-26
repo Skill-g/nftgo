@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getBackendHost } from "@/shared/lib/host";
 
 export type BetStatus = "accepted" | "rejected" | "cashed_out" | "pending";
@@ -22,6 +22,71 @@ type BetsNowResponse = {
 
 const EMPTY_BETS: RoundBet[] = [];
 
+type BetsNowItem = {
+    betId?: unknown;
+    userId?: unknown;
+    amount?: unknown;
+    multiplier?: unknown;
+    status?: unknown;
+    timestamp?: unknown;
+    usernameMasked?: unknown;
+    avatarUrl?: unknown;
+};
+
+function toNumber(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+}
+
+function toString(value: unknown): string | undefined {
+    if (typeof value === "string") return value;
+    return undefined;
+}
+
+function toBetStatus(value: unknown): BetStatus | undefined {
+    if (value === "accepted" || value === "rejected" || value === "cashed_out" || value === "pending") {
+        return value;
+    }
+    return undefined;
+}
+
+function mapBet(raw: unknown): RoundBet | null {
+    if (!raw || typeof raw !== "object") return null;
+    const item = raw as BetsNowItem;
+
+    const betId = toNumber(item.betId);
+    const userId = toNumber(item.userId);
+    const amount = toNumber(item.amount);
+    const multiplier = toNumber(item.multiplier);
+    const timestamp = toString(item.timestamp);
+    const status = toBetStatus(item.status);
+
+    if (betId == null || userId == null || amount == null || multiplier == null || !timestamp || !status) {
+        return null;
+    }
+
+    return {
+        betId,
+        userId,
+        amount,
+        multiplier,
+        status,
+        timestamp,
+        usernameMasked: toString(item.usernameMasked),
+        avatarUrl: toString(item.avatarUrl),
+    };
+}
+
+function sanitizeBets(rawBets: unknown[]): RoundBet[] {
+    return rawBets
+        .map(mapBet)
+        .filter((bet): bet is RoundBet => bet != null);
+}
+
 function extractBets(raw: unknown): unknown[] {
     if (Array.isArray(raw)) return raw;
     if (raw && typeof raw === "object" && Array.isArray((raw as BetsNowResponse).bets)) {
@@ -36,11 +101,15 @@ type UseBetsNowOptions = {
 
 export function useBetsNow(roundId?: number | null, initData?: string, options?: UseBetsNowOptions) {
     const [totalBets, setTotalBets] = useState(0);
+    const [bets, setBets] = useState<RoundBet[]>(EMPTY_BETS);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const host = getBackendHost();
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const totalRef = useRef(0);
     const enabled = options?.enabled ?? true;
+
+    const shouldFetch = useMemo(() => enabled && !!roundId && !!initData, [enabled, roundId, initData]);
 
     useEffect(() => {
         let aborted = false;
@@ -59,21 +128,20 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
             stopInterval();
         };
 
-        if (!enabled) {
-            cleanup();
-            return cleanup;
-        }
-
-        if (!roundId || !initData) {
+        if (!shouldFetch) {
             totalRef.current = 0;
-            setTotalBets(prev => (prev === 0 ? prev : 0));
-            setError(prev => (prev ? null : prev));
+            setBets(() => []);
+            setTotalBets(0);
+            setLoading(false);
+            setError(null);
             cleanup();
             return cleanup;
         }
         totalRef.current = 0;
-        setTotalBets(prev => (prev === 0 ? prev : 0));
-        setError(prev => (prev ? null : prev));
+        setTotalBets(0);
+        setBets(() => []);
+        setLoading(true);
+        setError(null);
         const fetchOnce = async () => {
             try {
                 inFlight?.abort();
@@ -88,23 +156,32 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
                 });
                 if (!res.ok) throw new Error(`bets-now ${res.status}`);
                 const json = await res.json();
-                const nextTotal = extractBets(json).length;
+                const extracted = extractBets(json);
+                const sanitized = sanitizeBets(extracted);
+                const nextTotal = sanitized.length;
+                if (!aborted) {
+                    setBets(sanitized);
+                }
                 if (!aborted && totalRef.current !== nextTotal) {
                     totalRef.current = nextTotal;
                     setTotalBets(nextTotal);
                 }
                 if (!aborted) {
-                    setError(prev => (prev ? null : prev));
+                    setLoading(false);
+                    setError(null);
                 }
             } catch (e) {
-                if (!aborted) setError(e as Error);
+                if (!aborted) {
+                    setLoading(false);
+                    setError(e as Error);
+                }
             }
         };
         fetchOnce();
         stopInterval();
         intervalRef.current = setInterval(fetchOnce, 3000);
         return cleanup;
-    }, [host, roundId, initData, enabled]);
+    }, [host, shouldFetch, roundId, initData]);
 
-    return { bets: EMPTY_BETS, totalBets, loading: false, error };
+    return { bets, totalBets, loading, error };
 }
