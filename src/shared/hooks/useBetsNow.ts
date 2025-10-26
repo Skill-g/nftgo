@@ -55,7 +55,12 @@ function toString(value: unknown): string | undefined {
 }
 
 function toBetStatus(value: unknown): BetStatus | undefined {
-    if (value === "accepted" || value === "rejected" || value === "cashed_out" || value === "pending") {
+    if (
+        value === "accepted" ||
+        value === "rejected" ||
+        value === "cashed_out" ||
+        value === "pending"
+    ) {
         return value;
     }
     return undefined;
@@ -72,7 +77,8 @@ function mapBet(raw: unknown): RoundBet | null {
 
     const firstName = toString(item.user?.firstName);
     const lastName = toString(item.user?.lastName);
-    const combinedName = [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
+    const combinedName =
+        [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
 
     const usernameMasked = toString(item.usernameMasked ?? combinedName);
     const avatarUrl = toString(item.avatarUrl ?? item.user?.photoUrl);
@@ -97,43 +103,55 @@ function mapBet(raw: unknown): RoundBet | null {
 }
 
 function sanitizeBets(rawBets: unknown[]): RoundBet[] {
-    return rawBets
-        .map(mapBet)
-        .filter((bet): bet is RoundBet => bet != null);
+    return rawBets.map(mapBet).filter((bet): bet is RoundBet => bet != null);
 }
 
 function extractBets(raw: unknown): unknown[] {
     if (Array.isArray(raw)) return raw;
-    if (raw && typeof raw === "object" && Array.isArray((raw as BetsNowResponse).bets)) {
+    if (
+        raw &&
+        typeof raw === "object" &&
+        Array.isArray((raw as BetsNowResponse).bets)
+    ) {
         return (raw as BetsNowResponse).bets ?? [];
     }
     return [];
 }
 
-type GamePhase = "waiting" | "running" | "crashed";
+export type GamePhase = "waiting" | "running" | "crashed";
 
 type UseBetsNowOptions = {
     enabled?: boolean;
     phase?: GamePhase;
 };
 
-export function useBetsNow(roundId?: number | null, initData?: string, options?: UseBetsNowOptions) {
+export function useBetsNow(
+    roundId?: number | null,
+    initData?: string,
+    options?: UseBetsNowOptions
+) {
     const [totalBets, setTotalBets] = useState(0);
     const [bets, setBets] = useState<RoundBet[]>(EMPTY_BETS);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+
     const host = getBackendHost();
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const totalRef = useRef(0);
+    const abortControllerRef = useRef<AbortController | null>(null);
+
     const enabled = options?.enabled ?? true;
     const phase = options?.phase;
 
-    const hasCredentials = useMemo(() => enabled && !!roundId && !!initData, [enabled, roundId, initData]);
+    const hasCredentials = useMemo(
+        () => enabled && !!roundId && !!initData,
+        [enabled, roundId, initData]
+    );
+
     const shouldSkipForPhase = phase === "running";
 
     useEffect(() => {
         let aborted = false;
-        let inFlight: AbortController | null = null;
 
         const stopInterval = () => {
             if (intervalRef.current) {
@@ -144,7 +162,10 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
 
         const cleanup = () => {
             aborted = true;
-            inFlight?.abort();
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+                abortControllerRef.current = null;
+            }
             stopInterval();
         };
 
@@ -162,7 +183,10 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
             setLoading(false);
             setError(null);
             stopInterval();
-            inFlight?.abort();
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+                abortControllerRef.current = null;
+            }
             return cleanup;
         }
 
@@ -174,17 +198,23 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
 
         const fetchOnce = async () => {
             try {
-                inFlight?.abort();
-                inFlight = new AbortController();
+                if (abortControllerRef.current) {
+                    abortControllerRef.current.abort();
+                }
+                abortControllerRef.current = new AbortController();
+
                 const url = `https://${host}/api/game/${roundId}/bets-now`;
+
                 const res = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ initData }),
                     cache: "no-store",
-                    signal: inFlight.signal,
+                    signal: abortControllerRef.current.signal,
                 });
+
                 if (!res.ok) throw new Error(`bets-now ${res.status}`);
+
                 const json = await res.json();
                 const extracted = extractBets(json);
                 const sanitized = sanitizeBets(extracted);
@@ -193,18 +223,24 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
                 if (!aborted) {
                     setBets(sanitized);
                 }
+
                 if (!aborted && totalRef.current !== nextTotal) {
                     totalRef.current = nextTotal;
                     setTotalBets(nextTotal);
                 }
+
                 if (!aborted) {
                     setLoading(false);
                     setError(null);
                 }
             } catch (e) {
-                if (!aborted) {
+                const err = e as Error;
+                const isAbortError =
+                    err.name === "AbortError" ||
+                    (err.message && err.message.includes("aborted"));
+                if (!aborted && !isAbortError) {
                     setLoading(false);
-                    setError(e as Error);
+                    setError(err);
                 }
             }
         };
