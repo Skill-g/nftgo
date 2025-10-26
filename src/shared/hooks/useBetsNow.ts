@@ -110,8 +110,11 @@ function extractBets(raw: unknown): unknown[] {
     return [];
 }
 
+type GamePhase = "waiting" | "running" | "crashed";
+
 type UseBetsNowOptions = {
     enabled?: boolean;
+    phase?: GamePhase;
 };
 
 export function useBetsNow(roundId?: number | null, initData?: string, options?: UseBetsNowOptions) {
@@ -123,8 +126,10 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const totalRef = useRef(0);
     const enabled = options?.enabled ?? true;
+    const phase = options?.phase;
 
-    const shouldFetch = useMemo(() => enabled && !!roundId && !!initData, [enabled, roundId, initData]);
+    const hasCredentials = useMemo(() => enabled && !!roundId && !!initData, [enabled, roundId, initData]);
+    const shouldSkipForPhase = phase === "running";
 
     useEffect(() => {
         let aborted = false;
@@ -143,13 +148,21 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
             stopInterval();
         };
 
-        if (!shouldFetch) {
+        if (!hasCredentials) {
             totalRef.current = 0;
             setBets(() => []);
             setTotalBets(0);
             setLoading(false);
             setError(null);
             cleanup();
+            return cleanup;
+        }
+
+        if (shouldSkipForPhase) {
+            setLoading(false);
+            setError(null);
+            stopInterval();
+            inFlight?.abort();
             return cleanup;
         }
 
@@ -201,7 +214,7 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
         intervalRef.current = setInterval(fetchOnce, 3000);
 
         return cleanup;
-    }, [host, shouldFetch, roundId, initData]);
+    }, [host, hasCredentials, shouldSkipForPhase, roundId, initData]);
 
     return { bets, totalBets, loading, error };
 }

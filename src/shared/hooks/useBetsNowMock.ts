@@ -5,8 +5,11 @@ import type { RoundBet } from "./useBetsNow";
 
 const EMPTY_BETS: RoundBet[] = [];
 
+type GamePhase = "waiting" | "running" | "crashed";
+
 type UseBetsNowMockOptions = {
     enabled?: boolean;
+    phase?: GamePhase;
 };
 
 const MOCK_USERS = [
@@ -39,7 +42,9 @@ export function useBetsNowMock(roundId?: number | null, initData?: string, optio
 
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const enabled = options?.enabled ?? true;
-    const shouldFetch = useMemo(() => enabled && !!roundId && !!initData, [enabled, roundId, initData]);
+    const phase = options?.phase;
+    const hasCredentials = useMemo(() => enabled && !!roundId && !!initData, [enabled, roundId, initData]);
+    const shouldSkipForPhase = phase === "running";
 
     useEffect(() => {
         if (intervalRef.current) {
@@ -47,9 +52,19 @@ export function useBetsNowMock(roundId?: number | null, initData?: string, optio
             intervalRef.current = null;
         }
 
-        if (!shouldFetch) {
+        if (!hasCredentials) {
             setBets(() => []);
             setTotalBets(0);
+            setLoading(false);
+            return () => {
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+            };
+        }
+
+        if (shouldSkipForPhase) {
             setLoading(false);
             return () => {
                 if (intervalRef.current) {
@@ -76,7 +91,7 @@ export function useBetsNowMock(roundId?: number | null, initData?: string, optio
                 intervalRef.current = null;
             }
         };
-    }, [roundId, initData, shouldFetch]);
+    }, [roundId, initData, hasCredentials, shouldSkipForPhase]);
 
     return { bets, totalBets, loading, error };
 }
