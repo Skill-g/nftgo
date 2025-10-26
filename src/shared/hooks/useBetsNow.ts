@@ -30,29 +30,50 @@ function extractBets(raw: unknown): unknown[] {
     return [];
 }
 
-export function useBetsNow(roundId?: number | null, initData?: string) {
+type UseBetsNowOptions = {
+    enabled?: boolean;
+};
+
+export function useBetsNow(roundId?: number | null, initData?: string, options?: UseBetsNowOptions) {
     const [totalBets, setTotalBets] = useState(0);
     const [error, setError] = useState<Error | null>(null);
     const host = getBackendHost();
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const totalRef = useRef(0);
+    const enabled = options?.enabled ?? true;
 
     useEffect(() => {
-        if (!roundId || !initData) {
-            totalRef.current = 0;
-            setTotalBets(prev => (prev === 0 ? prev : 0));
-            setError(prev => (prev ? null : prev));
+        let aborted = false;
+        let inFlight: AbortController | null = null;
+
+        const stopInterval = () => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-            return;
+        };
+
+        const cleanup = () => {
+            aborted = true;
+            inFlight?.abort();
+            stopInterval();
+        };
+
+        if (!enabled) {
+            cleanup();
+            return cleanup;
+        }
+
+        if (!roundId || !initData) {
+            totalRef.current = 0;
+            setTotalBets(prev => (prev === 0 ? prev : 0));
+            setError(prev => (prev ? null : prev));
+            cleanup();
+            return cleanup;
         }
         totalRef.current = 0;
         setTotalBets(prev => (prev === 0 ? prev : 0));
         setError(prev => (prev ? null : prev));
-        let aborted = false;
-        let inFlight: AbortController | null = null;
         const fetchOnce = async () => {
             try {
                 inFlight?.abort();
@@ -80,20 +101,10 @@ export function useBetsNow(roundId?: number | null, initData?: string) {
             }
         };
         fetchOnce();
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
+        stopInterval();
         intervalRef.current = setInterval(fetchOnce, 3000);
-        return () => {
-            aborted = true;
-            inFlight?.abort();
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-        };
-    }, [host, roundId, initData]);
+        return cleanup;
+    }, [host, roundId, initData, enabled]);
 
     return { bets: EMPTY_BETS, totalBets, loading: false, error };
 }
