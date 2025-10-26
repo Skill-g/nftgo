@@ -14,7 +14,9 @@ export function PlayersList() {
     const roundId = state?.roundId ?? null;
     const initData = user?.initData ?? "";
     const useMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
-    const { bets, totalBets, loading, error } = (useMock ? useBetsNowMock : useBetsNowReal)(roundId, initData);
+    const { bets, totalBets, loading, error } = (useMock ? useBetsNowMock : useBetsNowReal)(roundId, initData, {
+        phase: state?.phase,
+    });
 
     return (
         <div className="space-y-3 mb-6">
