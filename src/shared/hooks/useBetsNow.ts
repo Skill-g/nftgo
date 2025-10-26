@@ -17,85 +17,44 @@ export type RoundBet = {
 };
 
 type BetsNowResponse = {
-    bets: RoundBet[];
+    bets?: unknown[];
 };
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-    return typeof v === "object" && v !== null;
-}
+const EMPTY_BETS: RoundBet[] = [];
 
-function readNumber(v: unknown, fallback = 0): number {
-    return typeof v === "number" && !Number.isNaN(v) ? v : fallback;
-}
-
-function readString(v: unknown, fallback = ""): string {
-    return typeof v === "string" ? v : fallback;
-}
-
-function coerceMultiplier(v: unknown): number {
-    if (isRecord(v)) {
-        if (typeof v.multiplier === "number") return v.multiplier;
-        if (typeof v.x === "number") return v.x;
-        if (typeof v.coeff === "number") return v.coeff;
-        if (typeof v.payoutMultiplier === "number") return v.payoutMultiplier;
+function extractBets(raw: unknown): unknown[] {
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === "object" && Array.isArray((raw as BetsNowResponse).bets)) {
+        return (raw as BetsNowResponse).bets ?? [];
     }
-    return 1;
-}
-
-function coerceStatus(v: unknown): BetStatus {
-    if (v === "accepted" || v === "rejected" || v === "cashed_out" || v === "pending") return v;
-    return "pending";
-}
-
-function coerceTimestamp(v: unknown): string {
-    const s = readString(v);
-    if (s) return s;
-    return new Date().toISOString();
-}
-
-function toRoundBet(raw: unknown): RoundBet | null {
-    if (!isRecord(raw)) return null;
-    const betId = readNumber(raw.betId, NaN);
-    const amount = readNumber(raw.amount, 0);
-    let userId = readNumber(raw.userId, 0);
-    let usernameMasked: string | undefined = undefined;
-    let avatarUrl: string | undefined = undefined;
-    if (isRecord(raw.user)) {
-        userId = readNumber(raw.user.id, userId);
-        const firstName = readString(raw.user.firstName);
-        const lastName = readString(raw.user.lastName);
-        usernameMasked = [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
-        avatarUrl = readString(raw.user.photoUrl) || undefined;
-    }
-    const multiplier = coerceMultiplier(raw);
-    const status = coerceStatus(raw.status);
-    const timestamp = coerceTimestamp(raw.createdAt ?? raw.timestamp);
-    if (!Number.isFinite(betId)) return null;
-    return { betId, userId, amount, multiplier, status, timestamp, usernameMasked, avatarUrl };
+    return [];
 }
 
 export function useBetsNow(roundId?: number | null, initData?: string) {
-    const [bets, setBets] = useState<RoundBet[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [totalBets, setTotalBets] = useState(0);
     const [error, setError] = useState<Error | null>(null);
     const host = getBackendHost();
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const totalRef = useRef(0);
 
     useEffect(() => {
         if (!roundId || !initData) {
-            setBets([]);
+            totalRef.current = 0;
+            setTotalBets(prev => (prev === 0 ? prev : 0));
+            setError(prev => (prev ? null : prev));
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
             return;
         }
+        totalRef.current = 0;
+        setTotalBets(prev => (prev === 0 ? prev : 0));
+        setError(prev => (prev ? null : prev));
         let aborted = false;
         let inFlight: AbortController | null = null;
         const fetchOnce = async () => {
             try {
-                setLoading(true);
-                setError(null);
                 inFlight?.abort();
                 inFlight = new AbortController();
                 const url = `https://${host}/api/game/${roundId}/bets-now`;
@@ -108,13 +67,16 @@ export function useBetsNow(roundId?: number | null, initData?: string) {
                 });
                 if (!res.ok) throw new Error(`bets-now ${res.status}`);
                 const json = await res.json();
-                const rawArr: unknown[] = Array.isArray(json) ? json : Array.isArray((json as BetsNowResponse)?.bets) ? (json as BetsNowResponse).bets : [];
-                const mapped = rawArr.map(toRoundBet).filter((v): v is RoundBet => v !== null).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-                if (!aborted) setBets(mapped);
+                const nextTotal = extractBets(json).length;
+                if (!aborted && totalRef.current !== nextTotal) {
+                    totalRef.current = nextTotal;
+                    setTotalBets(nextTotal);
+                }
+                if (!aborted) {
+                    setError(prev => (prev ? null : prev));
+                }
             } catch (e) {
                 if (!aborted) setError(e as Error);
-            } finally {
-                if (!aborted) setLoading(false);
             }
         };
         fetchOnce();
@@ -122,7 +84,7 @@ export function useBetsNow(roundId?: number | null, initData?: string) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
         }
-        intervalRef.current = setInterval(fetchOnce, 1000);
+        intervalRef.current = setInterval(fetchOnce, 3000);
         return () => {
             aborted = true;
             inFlight?.abort();
@@ -133,6 +95,5 @@ export function useBetsNow(roundId?: number | null, initData?: string) {
         };
     }, [host, roundId, initData]);
 
-    const totalBets = bets.length;
-    return { bets, totalBets, loading, error };
+    return { bets: EMPTY_BETS, totalBets, loading: false, error };
 }
