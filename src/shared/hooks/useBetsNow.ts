@@ -31,6 +31,13 @@ type BetsNowItem = {
     timestamp?: unknown;
     usernameMasked?: unknown;
     avatarUrl?: unknown;
+    createdAt?: unknown;
+    user?: {
+        id?: unknown;
+        firstName?: unknown;
+        lastName?: unknown;
+        photoUrl?: unknown;
+    };
 };
 
 function toNumber(value: unknown): number | null {
@@ -59,13 +66,21 @@ function mapBet(raw: unknown): RoundBet | null {
     const item = raw as BetsNowItem;
 
     const betId = toNumber(item.betId);
-    const userId = toNumber(item.userId);
     const amount = toNumber(item.amount);
-    const multiplier = toNumber(item.multiplier);
-    const timestamp = toString(item.timestamp);
-    const status = toBetStatus(item.status);
+    const userId = toNumber(item.userId ?? item.user?.id);
+    const timestamp = toString(item.timestamp ?? item.createdAt);
 
-    if (betId == null || userId == null || amount == null || multiplier == null || !timestamp || !status) {
+    const firstName = toString(item.user?.firstName);
+    const lastName = toString(item.user?.lastName);
+    const combinedName = [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
+
+    const usernameMasked = toString(item.usernameMasked ?? combinedName);
+    const avatarUrl = toString(item.avatarUrl ?? item.user?.photoUrl);
+
+    const multiplier = toNumber(item.multiplier) ?? 1;
+    const status = toBetStatus(item.status) ?? "accepted";
+
+    if (betId == null || userId == null || amount == null || !timestamp) {
         return null;
     }
 
@@ -76,8 +91,8 @@ function mapBet(raw: unknown): RoundBet | null {
         multiplier,
         status,
         timestamp,
-        usernameMasked: toString(item.usernameMasked),
-        avatarUrl: toString(item.avatarUrl),
+        usernameMasked,
+        avatarUrl,
     };
 }
 
@@ -137,11 +152,13 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
             cleanup();
             return cleanup;
         }
+
         totalRef.current = 0;
         setTotalBets(0);
         setBets(() => []);
         setLoading(true);
         setError(null);
+
         const fetchOnce = async () => {
             try {
                 inFlight?.abort();
@@ -159,6 +176,7 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
                 const extracted = extractBets(json);
                 const sanitized = sanitizeBets(extracted);
                 const nextTotal = sanitized.length;
+
                 if (!aborted) {
                     setBets(sanitized);
                 }
@@ -177,9 +195,11 @@ export function useBetsNow(roundId?: number | null, initData?: string, options?:
                 }
             }
         };
+
         fetchOnce();
         stopInterval();
         intervalRef.current = setInterval(fetchOnce, 3000);
+
         return cleanup;
     }, [host, shouldFetch, roundId, initData]);
 

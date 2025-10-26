@@ -1,4 +1,3 @@
-
 'use client';
 import { useLingui } from '@lingui/react';
 import { Trans, t, msg } from '@lingui/macro';
@@ -6,9 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import Image from "next/image";
 
 export function Player({ name, bet, avatarUrl }: { name: string; bet: number; avatarUrl?: string }) {
-    const {
-        i18n: i18n
-    } = useLingui();
+    const { i18n } = useLingui();
 
     const initials = name
         .split(" ")
