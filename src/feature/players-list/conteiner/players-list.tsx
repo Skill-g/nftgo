@@ -11,7 +11,8 @@ export function PlayersList() {
     const roundId = state?.roundId ?? null;
     const initData = user?.initData ?? "";
     const useMock = process.env.NEXT_PUBLIC_USE_MOCK_BETS === "1";
-    const { totalBets, error } = (useMock ? useBetsNowMock : useBetsNowReal)(roundId, initData);
+    const betsEnabled = state?.phase !== "running";
+    const { totalBets, error } = (useMock ? useBetsNowMock : useBetsNowReal)(roundId, initData, { enabled: betsEnabled });
 
     return (
         <div className="mb-6">
